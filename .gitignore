@@ -1,0 +1,30 @@
+# Environment — NEVER commit these
+.env
+.env.local
+.env.production
+.env*.local
+
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Build outputs
+dist/
+build/
+.next/
+out/
+
+# Checkpoint files — user's unprocessed diffs (local only)
+.overseer/*.json
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/settings.json
+*.log
+
+# Supabase local
+supabase/.branches
+supabase/.temp

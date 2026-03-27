@@ -1,0 +1,22 @@
+{
+  "name": "overseer",
+  "version": "0.1.0",
+  "private": true,
+  "description": "overseer — Real-time AI agent narration",
+  "workspaces": [
+    "packages/daemon",
+    "packages/backend",
+    "packages/dashboard"
+  ],
+  "scripts": {
+    "dev:backend": "cd packages/backend && npm run dev",
+    "dev:dashboard": "cd packages/dashboard && npm run dev",
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:dashboard\"",
+    "install:all": "npm install --workspaces",
+    "build": "cd packages/dashboard && npm run build"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

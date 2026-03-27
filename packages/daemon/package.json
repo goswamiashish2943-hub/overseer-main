@@ -1,0 +1,30 @@
+{
+  "name": "@useoverseer/daemon",
+  "version": "0.1.0",
+  "description": "overseer CLI daemon — real-time AI agent narration",
+  "main": "src/index.js",
+  "bin": {
+    "overseer": "./src/cli.js"
+  },
+  "scripts": {
+    "start": "node src/cli.js watch",
+    "dev": "node src/cli.js watch --debug",
+    "test": "echo 'Tests not yet configured'"
+  },
+  "keywords": [
+    "ai",
+    "code-review",
+    "developer-tools"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.99.2",
+    "axios": "^1.13.6",
+    "chokidar": "^3.6.0",
+    "commander": "^12.1.0",
+    "diff": "^5.2.2",
+    "dotenv": "^16.6.1",
+    "uuid": "^13.0.0",
+    "ws": "^8.19.0"
+  }
+}
