@@ -89,7 +89,7 @@ async function authMiddleware(req, res, next) {
 
   // ── 4. Attach user to request ─────────────────────────────────────────────
   req.user = {
-    id:    user.id,
+    id: user.id,
     email: user.email,
   };
 
