@@ -1,7 +1,11 @@
 # overseer
 
-Real-time AI agent narration tool. Watches file changes made by AI
-coding agents and explains them in plain English on a live dashboard.
+Overseer is the only system that watches every file change in real time, builds persistent memory across sessions, and shows the entire team exactly what the AI just did — without anyone lifting a finger.
+
+# What makes Overseer different
+Unlike traditional code review tools that only analyze pull requests after the code is written, Overseer is a real-time AI co-pilot that silently watches your codebase as you (or your AI) code. It automatically detects every change, understands context across files and sessions, and instantly surfaces clear, persistent cards explaining what was changed and why — no manual diffs, no copy-pasting, no forgotten history.  It’s the only tool that gives your entire team live visibility into exactly what the AI is building, turning chaotic AI-assisted development into something transparent, auditable, and actually controllable.
+
+
 
 ## Project structure
 packages/daemon    → CLI file watcher (npm package)
