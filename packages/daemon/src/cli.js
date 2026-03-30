@@ -7,6 +7,7 @@
 //   overseer login        — authenticate and save token locally
 //
 // Tokens are stored in ~/.overseer/auth.json and refreshed automatically.
+// On startup, if the token expires within 10 minutes it is refreshed immediately.
 
 'use strict';
 
@@ -19,10 +20,10 @@ const { v4: uuidv4 } = require('uuid');
 const { Command } = require('commander');
 const { createClient } = require('@supabase/supabase-js');
 
-const { OverseerWatcher }            = require('./watcher');
+const { OverseerWatcher }              = require('./watcher');
 const { QuotaTracker, MODE_CHECKPOINT } = require('./quotaTracker');
-const { CheckpointEngine }           = require('./checkpointEngine');
-const { Sender }                     = require('./sender');
+const { CheckpointEngine }             = require('./checkpointEngine');
+const { Sender }                       = require('./sender');
 
 // ─── Auth token storage ───────────────────────────────────────────────────────
 
@@ -41,6 +42,29 @@ function loadAuth() {
   } catch {
     return null;
   }
+}
+
+/**
+ * Decode JWT expiry without verifying signature.
+ * Returns the exp timestamp in milliseconds, or 0 if unreadable.
+ */
+function getTokenExpiry(token) {
+  try {
+    const payload = token.split('.')[1];
+    const decoded = JSON.parse(Buffer.from(payload, 'base64').toString('utf8'));
+    return (decoded.exp || 0) * 1000; // convert to ms
+  } catch {
+    return 0;
+  }
+}
+
+/**
+ * Returns true if the token expires within the given threshold (ms).
+ */
+function isTokenExpiringSoon(token, thresholdMs = 10 * 60 * 1000) {
+  const expiry = getTokenExpiry(token);
+  if (!expiry) return true; // can't read expiry — treat as expired
+  return Date.now() >= expiry - thresholdMs;
 }
 
 // ─── CLI Definition ───────────────────────────────────────────────────────────
@@ -66,11 +90,8 @@ program
     }
 
     const supabase = createClient(supabaseUrl, supabaseKey);
-
-    // Prompt for credentials
     const readline = require('readline');
     const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
-
     const question = (q) => new Promise((resolve) => rl.question(q, resolve));
 
     console.log('\n  Overseer Login\n');
@@ -79,7 +100,6 @@ program
     rl.close();
 
     console.log('\n  Signing in...');
-
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
     if (error || !data?.session) {
@@ -134,7 +154,6 @@ async function runWatch(dir, options) {
   }
 
   // ── Load auth token ───────────────────────────────────────────────────────
-  // Priority: ~/.overseer/auth.json → OVERSEER_AUTH_TOKEN in .env
   let authToken    = null;
   let refreshToken = null;
   let userId       = null;
@@ -151,7 +170,7 @@ async function runWatch(dir, options) {
   }
 
   if (!authToken) {
-    console.error('[Overseer] Not authenticated. Run: overseer login');
+    console.error('[Overseer] Not authenticated. Run: node src/cli.js login');
     process.exit(1);
   }
 
@@ -165,12 +184,44 @@ async function runWatch(dir, options) {
       auth: { persistSession: false },
     });
 
-    // If we have a refresh token, set the session so Supabase can refresh silently
+    // Set session so Supabase can use the refresh token
     if (refreshToken) {
-      await supabase.auth.setSession({
-        access_token:  authToken,
-        refresh_token: refreshToken,
-      });
+      try {
+        await supabase.auth.setSession({
+          access_token:  authToken,
+          refresh_token: refreshToken,
+        });
+      } catch (err) {
+        if (debug) console.log('[CLI] setSession error (non-fatal):', err.message);
+      }
+    }
+
+    // ── Proactive token refresh ───────────────────────────────────────────
+    // If the token expires within 10 minutes, refresh it NOW before starting.
+    // This prevents mid-session auth failures.
+    if (isTokenExpiringSoon(authToken)) {
+      console.log('  Token expiring soon — refreshing...');
+      try {
+        const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+        if (refreshError || !refreshData?.session?.access_token) {
+          console.error('[Overseer] Token refresh failed:', refreshError?.message);
+          console.error('[Overseer] Run: node src/cli.js login');
+          process.exit(1);
+        }
+        authToken    = refreshData.session.access_token;
+        refreshToken = refreshData.session.refresh_token;
+        saveAuth({
+          ...savedAuth,
+          access_token:  authToken,
+          refresh_token: refreshToken,
+          saved_at:      new Date().toISOString(),
+        });
+        console.log('  Token refreshed successfully.\n');
+      } catch (err) {
+        console.error('[Overseer] Token refresh error:', err.message);
+        console.error('[Overseer] Run: node src/cli.js login');
+        process.exit(1);
+      }
     }
 
     // Resolve userId from token if not already known
@@ -215,7 +266,6 @@ async function runWatch(dir, options) {
     checkpointEngine,
     supabaseClient: supabase,
     onTokenRefresh: (newToken) => {
-      // Persist the refreshed token so next startup uses it
       const existing = loadAuth() || {};
       saveAuth({ ...existing, access_token: newToken, saved_at: new Date().toISOString() });
       if (debug) console.log('[CLI] Refreshed token persisted to ~/.overseer/auth.json');

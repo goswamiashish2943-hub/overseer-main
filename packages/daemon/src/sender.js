@@ -5,8 +5,10 @@
 //   - backend POST /analyze  (quota mode: active or warning)
 //   - checkpointEngine.save() (quota mode: checkpoint)
 //
-// Includes minimum diff size filter to avoid burning Gemini quota on
-// trivial changes like adding a comment or blank line.
+// Includes:
+//   - MIN_CHANGED_LINES=3 filter — skips trivial changes
+//   - Per-file cooldown — ignores duplicate events within 5 seconds
+//   - Auto token refresh on 401
 
 'use strict';
 
@@ -18,10 +20,14 @@ const RETRY_ATTEMPTS  = 3;
 const RETRY_DELAY_MS  = 1500;
 const REQUEST_TIMEOUT = 15000;
 
-// Minimum number of changed lines to trigger a Gemini analysis.
-// Changes smaller than this are silently skipped.
-// This prevents quota burn on comment edits, blank lines, minor whitespace.
+// Minimum changed lines to trigger analysis.
+// Prevents quota burn on comment edits, blank lines, whitespace.
 const MIN_CHANGED_LINES = 3;
+
+// Per-file cooldown after a successful send (ms).
+// Prevents duplicate requests when editor + formatter both trigger saves.
+// 5 seconds is enough for any formatter to finish.
+const FILE_COOLDOWN_MS = 5000;
 
 // ─── Sender ──────────────────────────────────────────────────────────────────
 
@@ -67,6 +73,9 @@ class Sender {
     this._debug            = debug;
     this._refreshing       = false;
 
+    // Per-file cooldown map: filePath → timestamp of last successful send
+    this._lastSentTime = new Map();
+
     this._log('Sender initialised');
   }
 
@@ -82,16 +91,30 @@ class Sender {
     this._log(`send() mode=${mode} file=${changeEvent.relativePath}`);
 
     // ── Minimum diff size filter ──────────────────────────────────────────
-    // Count meaningful changed lines (+ or -) in the diff.
-    // Skip trivial changes to conserve Gemini quota.
-    const diffText    = changeEvent.chunk?.diffText || '';
+    const diffText     = changeEvent.chunk?.diffText || '';
     const changedLines = diffText
       .split('\n')
       .filter((line) => line.startsWith('+') || line.startsWith('-'))
       .length;
 
     if (changedLines < MIN_CHANGED_LINES) {
-      this._log(`Skipping trivial change: ${changeEvent.relativePath} (${changedLines} changed lines < ${MIN_CHANGED_LINES})`);
+      this._log(`Skipping trivial change: ${changeEvent.relativePath} (${changedLines} lines < ${MIN_CHANGED_LINES})`);
+      return;
+    }
+
+    // ── Per-file cooldown ─────────────────────────────────────────────────
+    // After sending an analysis for a file, ignore further changes to that
+    // same file for FILE_COOLDOWN_MS. This collapses editor + formatter
+    // double-saves into a single Gemini request.
+    const filePath = changeEvent.filePath;
+    const lastSent = this._lastSentTime.get(filePath) || 0;
+    const timeSince = Date.now() - lastSent;
+
+    if (timeSince < FILE_COOLDOWN_MS) {
+      this._log(
+        `Cooldown active: ${changeEvent.relativePath} ` +
+        `(${Math.round(timeSince / 1000)}s < ${FILE_COOLDOWN_MS / 1000}s cooldown)`
+      );
       return;
     }
 
@@ -111,7 +134,12 @@ class Sender {
     }
 
     const payload = this._buildPayload(changeEvent, diff);
-    await this._postWithRetry(payload);
+    const success = await this._postWithRetry(payload);
+
+    // Record send time for cooldown (only on success)
+    if (success) {
+      this._lastSentTime.set(filePath, Date.now());
+    }
   }
 
   async sendQueued(queuedChunk) {
@@ -144,6 +172,7 @@ class Sender {
     };
   }
 
+  // Returns true on success, false on failure
   async _postWithRetry(payload) {
     let lastError;
 
@@ -162,7 +191,7 @@ class Sender {
         }
 
         this._log(`POST /analyze OK — file=${payload.file_path} attempt=${attempt}`);
-        return;
+        return true;
 
       } catch (err) {
         lastError = err;
@@ -184,21 +213,20 @@ class Sender {
               });
               if (!payload.from_queue) this._quotaTracker.increment();
               this._log('POST /analyze OK after token refresh');
-              return;
+              return true;
             } catch (retryErr) {
               console.error('[Overseer] Still failing after token refresh:', retryErr.message);
             }
           } else {
-            console.error('[Overseer] Auth failed — token expired and refresh failed.');
-            console.error('[Overseer] Run: overseer login  to re-authenticate.');
-            return;
+            console.error('[Overseer] Auth failed — run: node src/cli.js login');
+            return false;
           }
         }
 
-        // 429 — rate limited, skip this chunk
+        // 429 — rate limited
         if (status === 429) {
           console.warn('[Overseer] Rate limited by backend — skipping this chunk');
-          return;
+          return false;
         }
 
         if (attempt < RETRY_ATTEMPTS) {
@@ -207,7 +235,8 @@ class Sender {
       }
     }
 
-    console.error(`[Overseer] Failed to send after ${RETRY_ATTEMPTS} attempts: ${lastError?.message}`);
+    console.error(`[Overseer] Failed after ${RETRY_ATTEMPTS} attempts: ${lastError?.message}`);
+    return false;
   }
 
   async _tryRefreshToken() {
@@ -221,12 +250,10 @@ class Sender {
         this._log(`Token refresh failed: ${error?.message}`);
         return false;
       }
-
       this._authToken = data.session.access_token;
       if (this._onTokenRefresh) this._onTokenRefresh(this._authToken);
       this._log('Token refreshed successfully');
       return true;
-
     } catch (err) {
       this._log(`Token refresh error: ${err.message}`);
       return false;
