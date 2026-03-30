@@ -1,8 +1,14 @@
-# Environment — NEVER commit these
+# Environment files — never commit these
 .env
+.env.*
+.env.test
 .env.local
 .env.production
-.env*.local
+.env.development
+*.env
+
+# Auth tokens
+.overseer/auth.json
 
 # Dependencies
 node_modules/
