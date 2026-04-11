@@ -17,13 +17,6 @@ const useStore = create((set) => ({
     analysisCount: 0,
   },
 
-  // Quota state from daemon
-  quotaState: {
-    used:  0,
-    limit: 200,
-    mode:  'active', // active | warning | checkpoint
-    plan:  'free',
-  },
 
   // WebSocket connection status
   wsConnected: false,
@@ -34,6 +27,7 @@ const useStore = create((set) => ({
   // ── Actions ──────────────────────────────────────────────────────────────
 
   addFeedItem: (item) => set((state) => ({
+    // All enhanced fields are optional — basic items just won't have them
     feedItems: [item, ...state.feedItems].slice(0, 200), // keep last 200
     sessionStats: {
       ...state.sessionStats,
@@ -48,7 +42,6 @@ const useStore = create((set) => ({
     },
   })),
 
-  updateQuota: (quotaState) => set({ quotaState }),
 
   setWsConnected: (connected) => set({ wsConnected: connected }),
 

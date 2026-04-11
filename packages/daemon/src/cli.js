@@ -21,9 +21,9 @@ const { Command } = require('commander');
 const { createClient } = require('@supabase/supabase-js');
 
 const { OverseerWatcher }              = require('./watcher');
-const { QuotaTracker, MODE_CHECKPOINT } = require('./quotaTracker');
 const { CheckpointEngine }             = require('./checkpointEngine');
 const { Sender }                       = require('./sender');
+const { startContextWatcher }          = require('./fileWatcher');
 
 // ─── Auth token storage ───────────────────────────────────────────────────────
 
@@ -237,13 +237,6 @@ async function runWatch(dir, options) {
   const sessionId = uuidv4();
   if (debug) console.log(`[CLI] sessionId=${sessionId}`);
 
-  // ── QuotaTracker ──────────────────────────────────────────────────────────
-  const quotaTracker = new QuotaTracker({
-    supabaseClient: supabase || _stubSupabase(),
-    userId:         userId   || 'unknown',
-    debug,
-  });
-
   // ── CheckpointEngine ──────────────────────────────────────────────────────
   let sender;
   const checkpointEngine = new CheckpointEngine({
@@ -262,16 +255,20 @@ async function runWatch(dir, options) {
     authToken,
     projectId,
     sessionId,
-    quotaTracker,
     checkpointEngine,
     supabaseClient: supabase,
     onTokenRefresh: (newToken) => {
+      authToken = newToken; // ← keep local var in sync so getToken() always returns fresh value
       const existing = loadAuth() || {};
       saveAuth({ ...existing, access_token: newToken, saved_at: new Date().toISOString() });
       if (debug) console.log('[CLI] Refreshed token persisted to ~/.overseer/auth.json');
     },
     debug,
   });
+
+  // ── getToken getter — always returns the latest token after any auto-refresh ──
+  // Passed to fileWatcher so context uploads are never blocked by stale tokens.
+  const getToken = () => authToken;
 
   // ── Sync quota ────────────────────────────────────────────────────────────
   if (supabase && userId) {
@@ -313,7 +310,18 @@ async function runWatch(dir, options) {
     }
   });
 
-  // ── Start watcher ─────────────────────────────────────────────────────────
+  // ── Start context file watcher ────────────────────────────────────────────
+  // Detects README.md, ARCHITECTURE.md, TECH_CHOICES.md, SECURITY.md, etc.
+  // Uses getToken() so it always uploads with the freshest auth token.
+  const stopContextWatcher = startContextWatcher({
+    projectRoot,
+    apiUrl,
+    getToken,
+    projectId,
+    debug,
+  });
+
+  // ── Start code watcher ────────────────────────────────────────────────────
   const watcher = new OverseerWatcher(projectRoot, { debug });
 
   watcher.on('change', async (changeEvent) => {
@@ -330,9 +338,24 @@ async function runWatch(dir, options) {
   watcher.start();
   console.log('  Ready. Watching for file changes...\n');
 
+  // ── Auto-open dashboard ───────────────────────────────────────────────────
+  setTimeout(async () => {
+    try {
+      const open = (await import('open')).default;
+      const dashboardUrl = process.env.DASHBOARD_URL || 'http://localhost:3000';
+      // authToken is resolved at the start of runWatch
+      const url = authToken ? `${dashboardUrl}/dashboard` : `${dashboardUrl}/auth/login`;
+      await open(url);
+      console.log(`  📊 Dashboard opened at ${url}\n`);
+    } catch (err) {
+      if (debug) console.log('[CLI] Failed to auto-open browser:', err.message);
+    }
+  }, 1000);
+
   // ── Graceful shutdown ─────────────────────────────────────────────────────
   async function shutdown(signal) {
     console.log(`\n  [Overseer] ${signal} — shutting down...`);
+    stopContextWatcher();
     await watcher.stop();
     process.exit(0);
   }

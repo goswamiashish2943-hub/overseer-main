@@ -3,7 +3,11 @@
 // packages/dashboard/app/dashboard/page.jsx
 
 import { useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import useStore from '../../lib/store';
+import { supabase } from '../../lib/supabase';
+import EnhancedAnalysis from '../../components/EnhancedAnalysis';
 
 const SEVERITY = {
   critical: {
@@ -86,33 +90,32 @@ function StatBadge({ label, count, color }) {
   );
 }
 
-function QuotaBanner({ quota }) {
-  if (quota.mode === 'checkpoint') {
-    return (
-      <div className="bg-red-900 border border-red-600 rounded-lg p-3 mb-4 text-sm text-white">
-        🔴 <strong>Checkpoint mode</strong> — quota reached ({quota.used}/{quota.limit}).
-      </div>
-    );
-  }
-  if (quota.mode === 'warning') {
-    return (
-      <div className="bg-yellow-900 border border-yellow-600 rounded-lg p-3 mb-4 text-sm text-white">
-        ⚠️ <strong>Quota warning</strong> — {quota.used}/{quota.limit} used (
-        {Math.round((quota.used / quota.limit) * 100)}%)
-      </div>
-    );
-  }
-  return null;
-}
 
 export default function DashboardPage() {
   const {
-    feedItems, sessionStats, quotaState, wsConnected, sessionId,
-    addFeedItem, updateQuota, setWsConnected, setSessionId,
+    feedItems, sessionStats, wsConnected, sessionId,
+    addFeedItem, setWsConnected, setSessionId,
   } = useStore();
 
   const wsRef   = useRef(null);
   const feedRef = useRef(null);
+  const router  = useRouter();
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        router.push('/auth/login');
+      }
+    };
+    checkAuth();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!session) router.push('/auth/login');
+    });
+
+    return () => subscription.unsubscribe();
+  }, [router]);
 
   useEffect(() => {
     const existing = sessionStorage.getItem('overseer_session_id');
@@ -127,35 +130,50 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (!sessionId) return;
+    let isActive = true;
     const wsUrl = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:4000';
     const ws    = new WebSocket(`${wsUrl}/?session=${sessionId}`);
     wsRef.current = ws;
 
-    ws.onopen  = () => setWsConnected(true);
-    ws.onclose = () => setWsConnected(false);
-    ws.onerror = () => setWsConnected(false);
+    ws.onopen  = () => { if (isActive) setWsConnected(true); };
+    ws.onclose = () => { if (isActive) setWsConnected(false); };
+    ws.onerror = () => { if (isActive) setWsConnected(false); };
 
     ws.onmessage = (event) => {
+      if (!isActive) return;
       try {
         const msg = JSON.parse(event.data);
         if (msg.type === 'analysis_complete' && msg.result) {
+          const r = msg.result;
           addFeedItem({
             id:            crypto.randomUUID(),
-            severity:      msg.result.severity,
-            title:         msg.result.title,
-            body:          msg.result.body,
-            fix:           msg.result.fix || null,
-            fileRelevance: msg.result.file_relevance,
+            // Core fields (always present)
+            severity:      r.severity,
+            title:         r.title,
+            body:          r.body,
+            fix:           r.fix || null,
+            fileRelevance: r.file_relevance,
             filePath:      msg.filePath || '',
             timestamp:     Date.now(),
+            // Enhanced fields (present when enhanced:true)
+            enhanced:       msg.enhanced || false,
+            suggestion:     r.suggestion     || null,
+            betterApproach: r.betterApproach || null,
+            changeAnalysis: r.changeAnalysis || [],
+            explanations:   r.explanations   || '',
+            alignment:      r.alignment      || null,
+            decisions:      r.decisions      || null,
+            usedFallback:   r.usedFallback   || false,
           });
         }
-        if (msg.type === 'quota_update') updateQuota(msg.quota);
       } catch {}
     };
 
-    return () => ws.close();
-  }, [sessionId, addFeedItem, updateQuota, setWsConnected]);
+    return () => {
+      isActive = false;
+      ws.close();
+    };
+  }, [sessionId, addFeedItem, setWsConnected]);
 
   useEffect(() => {
     if (feedRef.current) feedRef.current.scrollTo({ top: 0, behavior: 'smooth' });
@@ -163,9 +181,15 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-zinc-950 text-white flex flex-col">
-      <header className="border-b border-zinc-800 px-6 py-3 flex items-center gap-4">
-        <span className="text-lg font-bold tracking-tight">Overseer</span>
-        <span className="text-xs text-zinc-500">Know what your AI is building.</span>
+      <header className="border-b border-zinc-800 px-6 py-3 flex flex-wrap items-center gap-6">
+        <div className="flex items-center gap-2">
+          <span className="text-lg font-bold tracking-tight text-blue-500">Overseer</span>
+          <span className="text-xs text-zinc-500 hidden sm:inline-block">Know what your AI is building.</span>
+        </div>
+        <nav className="flex gap-4">
+          <Link href="/dashboard" className="text-sm font-medium text-white transition-colors">Live Analysis</Link>
+          <Link href="/history" className="text-sm font-medium text-zinc-400 hover:text-white transition-colors">History</Link>
+        </nav>
         <div className="ml-auto flex items-center gap-2">
           <span className={`w-2 h-2 rounded-full ${wsConnected ? 'bg-green-500' : 'bg-red-500'}`} />
           <span className="text-xs text-zinc-400">{wsConnected ? 'Live' : 'Disconnected'}</span>
@@ -174,7 +198,6 @@ export default function DashboardPage() {
 
       <div className="flex flex-1 overflow-hidden">
         <main className="flex-1 overflow-y-auto p-6" ref={feedRef}>
-          <QuotaBanner quota={quotaState} />
           {feedItems.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-96 text-zinc-600">
               <div className="text-5xl mb-4">👁</div>
@@ -184,7 +207,11 @@ export default function DashboardPage() {
               </p>
             </div>
           ) : (
-            feedItems.map((item) => <FeedCard key={item.id} item={item} />)
+          feedItems.map((item) =>
+            item.enhanced
+              ? <EnhancedAnalysis key={item.id} item={item} />
+              : <FeedCard key={item.id} item={item} />
+          )
           )}
         </main>
 
@@ -199,25 +226,6 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <div>
-            <h2 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3">Quota</h2>
-            <div className="bg-zinc-900 rounded-lg p-3">
-              <div className="flex justify-between text-sm mb-2">
-                <span className="text-zinc-400">Used</span>
-                <span className="font-mono">{quotaState.used} / {quotaState.limit}</span>
-              </div>
-              <div className="w-full bg-zinc-800 rounded-full h-2">
-                <div
-                  className={`h-2 rounded-full transition-all ${
-                    quotaState.mode === 'checkpoint' ? 'bg-red-500' :
-                    quotaState.mode === 'warning'    ? 'bg-yellow-400' : 'bg-green-500'
-                  }`}
-                  style={{ width: `${Math.min((quotaState.used / quotaState.limit) * 100, 100)}%` }}
-                />
-              </div>
-              <p className="text-xs text-zinc-500 mt-2">Plan: {quotaState.plan} · Mode: {quotaState.mode}</p>
-            </div>
-          </div>
 
           <div className="flex-1">
             <h2 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3">

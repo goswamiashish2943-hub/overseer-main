@@ -49,7 +49,6 @@ class Sender {
     authToken,
     projectId,
     sessionId,
-    quotaTracker,
     checkpointEngine,
     onTokenRefresh = null,
     supabaseClient = null,
@@ -59,14 +58,12 @@ class Sender {
     if (!authToken)        throw new Error('Sender: authToken is required');
     if (!projectId)        throw new Error('Sender: projectId is required');
     if (!sessionId)        throw new Error('Sender: sessionId is required');
-    if (!quotaTracker)     throw new Error('Sender: quotaTracker is required');
     if (!checkpointEngine) throw new Error('Sender: checkpointEngine is required');
 
     this._apiUrl           = apiUrl.replace(/\/$/, '');
     this._authToken        = authToken;
     this._projectId        = projectId;
     this._sessionId        = sessionId;
-    this._quotaTracker     = quotaTracker;
     this._checkpointEngine = checkpointEngine;
     this._onTokenRefresh   = onTokenRefresh;
     this._supabase         = supabaseClient;
@@ -87,13 +84,12 @@ class Sender {
   }
 
   async send(changeEvent) {
-    const mode = this._quotaTracker.getMode();
-    this._log(`send() mode=${mode} file=${changeEvent.relativePath}`);
+    this._log(`send() file=${changeEvent.relativePath}`);
 
     // ── Minimum diff size filter ──────────────────────────────────────────
     const diffText     = changeEvent.chunk?.diffText || '';
     const changedLines = diffText
-      .split('\n')
+      .split('\\n')
       .filter((line) => line.startsWith('+') || line.startsWith('-'))
       .length;
 
@@ -118,22 +114,7 @@ class Sender {
       return;
     }
 
-    if (mode === 'checkpoint') {
-      this._checkpointEngine.save(changeEvent);
-      return;
-    }
-
-    const { send, diff } = await this._quotaTracker.shouldSend(
-      changeEvent.filePath,
-      changeEvent.chunk
-    );
-
-    if (!send) {
-      this._log(`Batching held: ${changeEvent.relativePath}`);
-      return;
-    }
-
-    const payload = this._buildPayload(changeEvent, diff);
+    const payload = this._buildPayload(changeEvent);
     const success = await this._postWithRetry(payload);
 
     // Record send time for cooldown (only on success)
@@ -186,10 +167,6 @@ class Sender {
           },
         });
 
-        if (!payload.from_queue) {
-          this._quotaTracker.increment();
-        }
-
         this._log(`POST /analyze OK — file=${payload.file_path} attempt=${attempt}`);
         return true;
 
@@ -211,7 +188,6 @@ class Sender {
                   'Content-Type':  'application/json',
                 },
               });
-              if (!payload.from_queue) this._quotaTracker.increment();
               this._log('POST /analyze OK after token refresh');
               return true;
             } catch (retryErr) {

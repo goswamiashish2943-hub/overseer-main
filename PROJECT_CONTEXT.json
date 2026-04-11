@@ -1,0 +1,52 @@
+{
+  "projectName": "Overseer",
+  "description": "Real-time AI code narration and architectural alignment checker",
+  "version": "0.1.0",
+  "goals": [
+    "Auto-detect project context files (README.md, ARCHITECTURE.md, etc.)",
+    "Provide real-time code analysis via Groq (Llama 3.3 70B)",
+    "Suggest better architectural approaches using project context",
+    "Learn from developer choices over time",
+    "Save and recall project patterns across sessions"
+  ],
+  "constraints": {
+    "concurrency": "Single developer, single project at a time",
+    "latency": "<5 seconds per analysis (2 Groq calls max)",
+    "storage": "Supabase PostgreSQL",
+    "scale": "Single project context, not multi-tenant (yet)",
+    "groqRateLimit": "30 RPM free tier — multi-key round-robin reduces pressure"
+  },
+  "techStack": {
+    "daemon": "Node.js — file watching with chokidar + polling for context files",
+    "backend": "Express — Groq API (2-call strategy), Supabase for persistence",
+    "frontend": "Next.js React — WebSocket for real-time analysis feed",
+    "database": "Supabase PostgreSQL — events, file_knowledge, project_context_files",
+    "ai": "Groq (Llama 3.3 70B) — fast, free-tier sufficient for code analysis"
+  },
+  "keyDecisions": {
+    "whyNodeDaemon": "Event-driven, ideal for file watching with chokidar",
+    "whyGroq": "Free tier + fast response + Llama 3.3 70B quality sufficient",
+    "whySupabase": "Simple setup, PostgreSQL reliability, RLS security built-in",
+    "why2GroqCalls": "Balance between richness (6 analysis dimensions) and API rate limits",
+    "whyAutomatic": "Developers should not configure anything — zero setup philosophy",
+    "whyPolling": "fs.watch is unreliable on Windows; polling is cross-platform safe"
+  },
+  "analysisFlow": [
+    "1. File change detected by chokidar watcher",
+    "2. Diff extracted by diffExtractor.js",
+    "3. Daemon sends diff to POST /analyze (with auth token)",
+    "4. Backend fetches per-file context from file_knowledge",
+    "5. Backend fetches project context from project_context_files",
+    "6. upgradeAnalysis.js: Call 1 → suggestion + betterApproach + alignment + decisions",
+    "7. upgradeAnalysis.js: Call 2 → changeAnalysis + explanations",
+    "8. Result broadcast to dashboard via WebSocket",
+    "9. Dashboard shows EnhancedAnalysis component with 6 sections"
+  ],
+  "fileContextSources": [
+    "README.md — project overview",
+    "ARCHITECTURE.md — system design decisions",
+    "TECH_CHOICES.md — why each technology was chosen",
+    "SECURITY.md — security requirements and constraints",
+    "PROJECT_CONTEXT.json — machine-readable project metadata"
+  ]
+}

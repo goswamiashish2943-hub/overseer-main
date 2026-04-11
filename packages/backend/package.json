@@ -6,6 +6,7 @@
   "scripts": {
     "start": "node src/index.js",
     "dev": "node --watch src/index.js",
+    "init": "node scripts/init.js",
     "test": "echo 'Tests not yet configured'"
   },
   "license": "MIT",
