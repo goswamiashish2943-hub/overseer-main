@@ -22,17 +22,19 @@ const app  = express();
 const PORT = process.env.PORT || 4000;
 
 // ── CORS ──────────────────────────────────────────────────────────────────────
-const allowedOrigins = (process.env.ALLOWED_ORIGINS || 'http://localhost:3000')
-  .split(',')
-  .map((o) => o.trim());
+const allowedOrigins = process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS.split(',')
+  : ['http://localhost:3000'];
 
 app.use(cors({
-  origin: (origin, cb) => {
-    // Allow requests with no origin (e.g. daemon curl, health checks)
-    if (!origin || allowedOrigins.includes(origin)) return cb(null, true);
-    cb(new Error(`CORS: origin ${origin} not allowed`));
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
   },
-  methods: ['GET', 'POST'],
+  credentials: true
 }));
 
 // ── Body parser ───────────────────────────────────────────────────────────────
@@ -67,6 +69,19 @@ console.log('[Overseer] Context routes mounted at /api/context');
 // ── HTTP + WebSocket server ───────────────────────────────────────────────────
 const httpServer = http.createServer(app);
 wsServer.setup(httpServer);
+
+// Keep-alive ping — prevents Railway free tier from sleeping
+if (process.env.NODE_ENV === 'production') {
+  const BACKEND_URL = process.env.RAILWAY_PUBLIC_URL;
+  setInterval(async () => {
+    try {
+      await fetch(`${BACKEND_URL}/health`);
+      console.log('[Keep-alive] Pinged health endpoint');
+    } catch (e) {
+      console.error('[Keep-alive] Ping failed:', e.message);
+    }
+  }, 4 * 60 * 1000); // every 4 minutes
+}
 
 httpServer.listen(PORT, () => {
   console.log(`\n  Overseer backend running on port ${PORT}`);
