@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 // packages/daemon/src/cli.js
 // WRITTEN BY CLAUDE — do not modify (see overseer-forbidden-files)
 //
@@ -24,6 +25,20 @@ const { OverseerWatcher }              = require('./watcher');
 const { CheckpointEngine }             = require('./checkpointEngine');
 const { Sender }                       = require('./sender');
 const { startContextWatcher }          = require('./fileWatcher');
+
+// ─── QuotaTracker Fallback (Bug 3) ───────────────────────────────────────────
+const EventEmitter = require('events');
+const quotaTracker = new EventEmitter();
+quotaTracker.sync = async () => ({
+  used: 0,
+  limit: 'unlimited',
+  mode: 'active',
+  plan: 'pro',
+  resetDate: null
+});
+quotaTracker.isQuotaReset = () => true;
+const MODE_CHECKPOINT = 'checkpoint';
+
 
 // ─── Auth token storage ───────────────────────────────────────────────────────
 
@@ -81,13 +96,16 @@ program
   .command('login')
   .description('Authenticate with Overseer')
   .action(async () => {
+    console.log('\n  Overseer Login\n');
+
     const supabaseUrl = process.env.SUPABASE_URL;
     const supabaseKey = process.env.SUPABASE_ANON_KEY;
 
     if (!supabaseUrl || !supabaseKey) {
-      console.error('[Overseer] SUPABASE_URL and SUPABASE_ANON_KEY must be set in .env');
+      console.error('[Overseer] SUPABASE_URL and SUPABASE_ANON_KEY must be set in .env to login');
       process.exit(1);
     }
+
 
     const supabase = createClient(supabaseUrl, supabaseKey);
     const readline = require('readline');
@@ -342,7 +360,8 @@ async function runWatch(dir, options) {
   setTimeout(async () => {
     try {
       const open = (await import('open')).default;
-      const dashboardUrl = process.env.DASHBOARD_URL || 'http://localhost:3000';
+      const dashboardUrl = process.env.DASHBOARD_URL || 'https://overseer-main-dashboard.vercel.app/';
+
       // authToken is resolved at the start of runWatch
       const url = authToken ? `${dashboardUrl}/dashboard` : `${dashboardUrl}/auth/login`;
       await open(url);

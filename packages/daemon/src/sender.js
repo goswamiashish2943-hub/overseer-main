@@ -89,7 +89,7 @@ class Sender {
     // ── Minimum diff size filter ──────────────────────────────────────────
     const diffText     = changeEvent.chunk?.diffText || '';
     const changedLines = diffText
-      .split('\\n')
+      .split('\n')
       .filter((line) => line.startsWith('+') || line.startsWith('-'))
       .length;
 
