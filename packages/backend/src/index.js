@@ -17,6 +17,7 @@ const rateLimit   = require('express-rate-limit');
 const analyseRoute = require('./analyseRoute');
 const wsServer     = require('./websocket');
 const { router: contextRoute } = require('./context');
+const { router: projectRoute } = require('./projectRoute');
 
 const app  = express();
 const PORT = process.env.PORT || 4000;
@@ -62,6 +63,7 @@ app.get('/health', (req, res) => {
 });
 
 // ── Routes ────────────────────────────────────────────────────────────────────
+app.use('/api/project', projectRoute);
 app.use('/', analyseRoute);
 app.use('/', contextRoute);
 console.log('[Overseer] Context routes mounted at /api/context');

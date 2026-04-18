@@ -1,6 +1,6 @@
 {
   "name": "@useoverseer/daemon",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "overseer CLI daemon — real-time AI agent narration",
   "main": "src/index.js",
   "bin": {
