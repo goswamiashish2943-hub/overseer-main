@@ -1,29 +1,65 @@
-# overseer
+# Overseer
 
-Overseer is the only system that watches every file change in real time, builds persistent memory across sessions, and shows the entire team exactly what the AI just did — without anyone lifting a finger.
+Real-time AI code analysis for developers.
 
-# What makes Overseer different
-Unlike traditional code review tools that only analyze pull requests after the code is written, Overseer is a real-time AI co-pilot that silently watches your codebase as you (or your AI) code. It automatically detects every change, understands context across files and sessions, and instantly surfaces clear, persistent cards explaining what was changed and why — no manual diffs, no copy-pasting, no forgotten history.  It’s the only tool that gives your entire team live visibility into exactly what the AI is building, turning chaotic AI-assisted development into something transparent, auditable, and actually controllable.
+Watch your project. Get instant architectural feedback, security checks, and pattern validation.
 
+## Quick Start
 
+```bash
+npx overseer login
+npx overseer watch .
+```
 
-## Project structure
-packages/daemon    → CLI file watcher (npm package)
-packages/backend   → Express + WebSocket + engine (Railway)
-packages/dashboard → Next.js dashboard (Vercel)
+That's it. Dashboard opens automatically.
 
-## Quick start (development)
+## Installation
 
+```bash
+npm install -g @useoverseer/daemon
+```
 
-1. Start backend: cd packages/backend && npm run dev
-2. Start dashboard: cd packages/dashboard && npm run dev
-3. In your project: npx overseer watch
+Or use with npx (no installation):
 
-## Architecture
-See .agent/skills/overseer-architecture/SKILL.md for complete data flow.
+```bash
+npx overseer login
+npx overseer watch .
+```
 
-## Development rules
-See .agent/rules.md for agent constraints and stack requirements.
+## What it does
 
-## Status
-Project scaffold complete.
+✅ **Real-time analysis** — Every file you save gets analyzed instantly
+✅ **Security checks** — Detects SQL injection, XSS, auth issues, hardcoded secrets
+✅ **Architecture validation** — Ensures code matches your project's design decisions
+✅ **Zero setup** — Works with any project, auto-detects git remote
+✅ **Smart context** — Reads your project docs (ARCHITECTURE.md, SECURITY.md, etc.)
+
+## How it works
+
+1. You write code
+2. File is saved
+3. Overseer detects change
+4. AI analyzes code
+5. Dashboard shows results
+6. You iterate
+
+**Latency:** ~0.2 -5  seconds
+
+## Documentation
+
+- **[Getting Started](GETTING_STARTED.md)** — Full 10-minute setup guide
+- **[Quick Start](QUICK_START.md)** — 2-minute setup
+- **[GitHub](https://github.com/goswamiashish2943-hub/overseer-main)** — Source code
+- **[Dashboard](https://overseer-main-dashboard.vercel.app)** — Live analysis
+
+## Package
+
+- **[@useoverseer/daemon](https://www.npmjs.com/package/@useoverseer/daemon)** — CLI & file watcher
+
+## License
+
+MIT
+
+## Support
+
+Issues: https://overseer-zeta.vercel.app/
