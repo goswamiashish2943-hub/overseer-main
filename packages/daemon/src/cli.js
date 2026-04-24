@@ -20,11 +20,43 @@ const fs        = require('fs');
 const path      = require('path');
 const os        = require('os');
 const crypto    = require('crypto');
-const { execSync } = require('child_process');
+const { execSync, spawn } = require('child_process');
 const { v4: uuidv4 } = require('uuid');
 const { Command } = require('commander');
 const { createClient } = require('@supabase/supabase-js');
 const axios = require('axios');
+
+// ─── Explicit browser launcher ────────────────────────────────────────────────
+// On Windows, a generic OS URL-open can land in VS Code if Code is registered
+// as the default http/https handler.  We instead try real browsers directly.
+
+async function openBrowser(url) {
+  const isWin = process.platform === 'win32';
+
+  if (isWin) {
+    // Ordered preference: Edge → Chrome → Firefox
+    const candidates = [
+      'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
+      'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe',
+      'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+      'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
+      'C:\\Program Files\\Mozilla Firefox\\firefox.exe',
+    ];
+
+    for (const exe of candidates) {
+      if (fs.existsSync(exe)) {
+        spawn(exe, [url], { detached: true, stdio: 'ignore' }).unref();
+        return; // launched — we're done
+      }
+    }
+  }
+
+  // macOS / Linux — or Windows fallback when no known browser was found
+  try {
+    const open = (await import('open')).default;
+    await open(url);
+  } catch { /* silently ignore if open is unavailable */ }
+}
 
 const { OverseerWatcher }     = require('./watcher');
 const { CheckpointEngine }    = require('./checkpointEngine');
@@ -276,10 +308,9 @@ async function runWatch(dir, options) {
   // If not logged in, open browser and exit with instructions
   if (!authToken) {
     console.log('  You are not logged in.\n');
+    const loginUrl = `${DEFAULT_DASHBOARD_URL}/auth/login`;
     try {
-      const open = (await import('open')).default;
-      const loginUrl = `${DEFAULT_DASHBOARD_URL}/auth/login`;
-      await open(loginUrl);
+      await openBrowser(loginUrl);
       console.log(`  🌐 Opening login page: ${loginUrl}`);
     } catch { /* browser open failed non-fatally */ }
     console.log('\n  After logging in, run:\n    overseer login\n  Then run:\n    overseer watch\n');
@@ -418,10 +449,9 @@ async function runWatch(dir, options) {
 
   // ── Auto-open dashboard ───────────────────────────────────────────────────
   setTimeout(async () => {
+    const url = `${DEFAULT_DASHBOARD_URL}/dashboard`;
     try {
-      const open = (await import('open')).default;
-      const url = `${DEFAULT_DASHBOARD_URL}/dashboard`;
-      await open(url);
+      await openBrowser(url);
       console.log(`  📊 Dashboard: ${url}\n`);
     } catch (err) {
       if (debug) console.log('[CLI] Failed to auto-open browser:', err.message);
