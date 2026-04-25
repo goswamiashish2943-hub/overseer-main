@@ -29,33 +29,57 @@ const axios = require('axios');
 // ─── Explicit browser launcher ────────────────────────────────────────────────
 // On Windows, a generic OS URL-open can land in VS Code if Code is registered
 // as the default http/https handler.  We instead try real browsers directly.
+// NEVER falls back to the generic 'open' package — that causes the VS Code issue.
 
-async function openBrowser(url) {
+function openBrowser(url) {
   const isWin = process.platform === 'win32';
 
   if (isWin) {
     // Ordered preference: Edge → Chrome → Firefox
     const candidates = [
-      'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
-      'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe',
-      'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
-      'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
-      'C:\\Program Files\\Mozilla Firefox\\firefox.exe',
+      { name: 'Edge',    exe: 'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe' },
+      { name: 'Edge',    exe: 'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe' },
+      { name: 'Chrome',  exe: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe' },
+      { name: 'Chrome',  exe: 'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe' },
+      { name: 'Firefox', exe: 'C:\\Program Files\\Mozilla Firefox\\firefox.exe' },
     ];
 
-    for (const exe of candidates) {
+    for (const { name, exe } of candidates) {
       if (fs.existsSync(exe)) {
-        spawn(exe, [url], { detached: true, stdio: 'ignore' }).unref();
-        return; // launched — we're done
+        console.log('  [browser] Found ' + name + ': ' + exe);
+        try {
+          execSync('start "" "' + exe + '" "' + url + '"', { stdio: 'ignore', windowsHide: true });
+          console.log('  [browser] Launched ' + name + '.');
+          return;
+        } catch (err) {
+          console.log('  [browser] cmd start failed for ' + name + ': ' + err.message);
+        }
       }
     }
+
+    // Fallback: try App Paths registry names
+    console.log('  [browser] No exe path worked. Trying App Paths...');
+    for (const cmd of ['start msedge', 'start chrome', 'start firefox']) {
+      try {
+        execSync(cmd + ' "' + url + '"', { stdio: 'ignore', windowsHide: true });
+        console.log('  [browser] Launched via: ' + cmd);
+        return;
+      } catch { /* not registered */ }
+    }
+
+    console.log('  [browser] WARNING: Could not open any browser. Open manually:');
+    console.log('  ' + url);
+    return;
   }
 
-  // macOS / Linux — or Windows fallback when no known browser was found
+  // macOS / Linux
   try {
-    const open = (await import('open')).default;
-    await open(url);
-  } catch { /* silently ignore if open is unavailable */ }
+    if (process.platform === 'darwin') {
+      execSync('open "' + url + '"', { stdio: 'ignore' });
+    } else {
+      execSync('xdg-open "' + url + '"', { stdio: 'ignore' });
+    }
+  } catch { /* silently ignore */ }
 }
 
 const { OverseerWatcher }     = require('./watcher');
@@ -310,7 +334,7 @@ async function runWatch(dir, options) {
     console.log('  You are not logged in.\n');
     const loginUrl = `${DEFAULT_DASHBOARD_URL}/auth/login`;
     try {
-      await openBrowser(loginUrl);
+      openBrowser(loginUrl);
       console.log(`  🌐 Opening login page: ${loginUrl}`);
     } catch { /* browser open failed non-fatally */ }
     console.log('\n  After logging in, run:\n    overseer login\n  Then run:\n    overseer watch\n');
@@ -451,7 +475,7 @@ async function runWatch(dir, options) {
   setTimeout(async () => {
     const url = `${DEFAULT_DASHBOARD_URL}/dashboard`;
     try {
-      await openBrowser(url);
+      openBrowser(url);
       console.log(`  📊 Dashboard: ${url}\n`);
     } catch (err) {
       if (debug) console.log('[CLI] Failed to auto-open browser:', err.message);
