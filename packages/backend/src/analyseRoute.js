@@ -146,8 +146,8 @@ router.post('/analyze', authMiddleware, async (req, res) => {
         file_path,
         diff_text,
         severity: result.severity,
-        analysis_text: `${result.title}\n\n${result.body}`,
         ...enhancedData,
+        used_fallback: result.usedFallback || false,
         created_at: timestamp
           ? new Date(timestamp).toISOString()
           : new Date().toISOString(),

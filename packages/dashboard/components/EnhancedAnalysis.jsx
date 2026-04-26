@@ -45,9 +45,22 @@ function SectionCard({ title, icon, colorClass, borderClass, bgClass, children, 
 
 // ─── 1. Suggestion card ───────────────────────────────────────────────────────
 
-function SuggestionCard({ suggestion, filePath }) {
+function SuggestionCard({ suggestion, filePath, onMarkReviewed, isReviewed }) {
+  const [marking, setMarking] = useState(false);
   if (!suggestion) return null;
   const colors = SEVERITY_COLORS[suggestion.severity] || SEVERITY_COLORS.info;
+
+  const handleMark = async (e) => {
+    e.stopPropagation();
+    if (!onMarkReviewed) return;
+    setMarking(true);
+    try {
+      await onMarkReviewed();
+    } catch (err) {
+      console.error('Failed to mark reviewed:', err);
+      setMarking(false);
+    }
+  };
 
   return (
     <SectionCard
@@ -58,10 +71,24 @@ function SuggestionCard({ suggestion, filePath }) {
       bgClass={colors.bg}
     >
       <div className="flex items-center gap-2 mb-2">
-        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${colors.badge}`}>
+        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${colors.badge} flex-shrink-0`}>
           {suggestion.severity}
         </span>
-        <span className="text-xs text-zinc-400 font-mono truncate">{filePath}</span>
+        <span className="text-xs text-zinc-400 font-mono truncate max-w-[150px] sm:max-w-none flex-1">{filePath}</span>
+        
+        {/* Checkbox moved here */}
+        {onMarkReviewed && (
+          <label className="ml-auto flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium cursor-pointer text-zinc-400 hover:text-green-300 transition-all duration-200">
+            <input
+              type="checkbox"
+              className="w-3.5 h-3.5 cursor-pointer accent-green-600 rounded bg-zinc-800 border-zinc-700"
+              checked={isReviewed}
+              disabled={marking || isReviewed}
+              onChange={handleMark}
+            />
+            {marking ? '...' : isReviewed ? 'Reviewed' : 'Mark Reviewed'}
+          </label>
+        )}
       </div>
       <p className="text-sm font-semibold text-white mb-1">{suggestion.title}</p>
       <p className="text-sm text-zinc-300 leading-relaxed">{suggestion.body}</p>
@@ -255,42 +282,18 @@ function ContextSavedCard({ usedFallback }) {
  * @param {boolean} [props.isReviewed] - Whether this item has been reviewed
  */
 export default function EnhancedAnalysis({ item, onMarkReviewed, isReviewed }) {
-  const [marking, setMarking] = useState(false);
-
   if (!item) return null;
 
-  const handleMark = async (e) => {
-    e.stopPropagation();
-    if (!onMarkReviewed) return;
-    setMarking(true);
-    try {
-      await onMarkReviewed(item.id);
-    } catch (err) {
-      console.error('Failed to mark reviewed:', err);
-      setMarking(false);
-    }
-  };
-
   return (
-    <div className={`mb-3 transition-all duration-300 ${
-      isReviewed ? 'opacity-0 scale-95 pointer-events-none' : 'opacity-100 scale-100'
+    <div className={`mb-3 transition-all duration-500 transform-gpu ${
+      isReviewed ? 'opacity-0 h-0 overflow-hidden mb-0 scale-95 pointer-events-none translate-x-4' : 'opacity-100 scale-100 translate-x-0'
     }`}>
-      {/* Review header */}
-      {onMarkReviewed && !isReviewed && (
-        <div className="flex justify-end mb-1">
-          <label className="flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium cursor-pointer text-zinc-400 hover:text-green-300 transition-all duration-200">
-            <input
-              type="checkbox"
-              className="w-3.5 h-3.5 cursor-pointer accent-green-600 rounded bg-zinc-800 border-zinc-700"
-              checked={isReviewed}
-              disabled={marking}
-              onChange={handleMark}
-            />
-            {marking ? '...' : 'Reviewed'}
-          </label>
-        </div>
-      )}
-      <SuggestionCard     suggestion={item.suggestion}         filePath={item.filePath} />
+      <SuggestionCard
+        suggestion={item.suggestion}
+        filePath={item.filePath}
+        onMarkReviewed={onMarkReviewed ? () => onMarkReviewed(item.id) : undefined}
+        isReviewed={isReviewed}
+      />
       <BetterApproachCard betterApproach={item.betterApproach} />
       <ChangeBreakdownCard
         changeAnalysis={item.changeAnalysis}

@@ -91,8 +91,8 @@ function FeedCard({ item, onMarkReviewed, isReviewed }) {
 
   return (
     <div
-      className={`rounded-lg border ${s.bg} ${s.border} p-4 mb-3 transition-all duration-300 ${
-        isReviewed ? 'opacity-0 scale-95 pointer-events-none' : 'opacity-100 scale-100'
+      className={`rounded-lg border ${s.bg} ${s.border} p-4 mb-3 transition-all duration-500 ${
+        isReviewed ? 'opacity-0 h-0 overflow-hidden mb-0 scale-95 pointer-events-none' : 'opacity-100'
       }`}
     >
       <div className="flex items-center gap-2 mb-2">
@@ -105,16 +105,16 @@ function FeedCard({ item, onMarkReviewed, isReviewed }) {
         <span className="text-xs text-zinc-600 ml-auto mr-2">
           {new Date(item.timestamp).toLocaleTimeString()}
         </span>
-        {!isReviewed && (
+        {onMarkReviewed && (
           <label className="flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium cursor-pointer text-zinc-400 hover:text-green-300 transition-all duration-200">
             <input
               type="checkbox"
               className="w-3.5 h-3.5 cursor-pointer accent-green-600 rounded bg-zinc-800 border-zinc-700"
               checked={isReviewed}
-              disabled={marking}
+              disabled={marking || isReviewed}
               onChange={handleMark}
             />
-            {marking ? '...' : 'Reviewed'}
+            {marking ? '...' : isReviewed ? 'Reviewed' : 'Mark Reviewed'}
           </label>
         )}
       </div>
@@ -192,12 +192,20 @@ export default function DashboardPage() {
   // ── Handle mark reviewed ───────────────────────────────────────────────────
 
   const handleMarkReviewed = useCallback(async (id) => {
+    console.log('[Dashboard] Marking reviewed:', id);
     try {
       await callMarkReviewed(id);
+      console.log('[Dashboard] API success for:', id);
       markReviewed(id);
     } catch (err) {
       console.error('[Dashboard] Mark reviewed error:', err.message);
-      throw err; // re-throw so the button can show error state
+      // Even if API fails, let's mark it in store for UI if it's a 404 (already reviewed or ID mismatch)
+      if (err.message.includes('404')) {
+        console.warn('[Dashboard] Item not found in DB, marking reviewed in store anyway for UI consistency');
+        markReviewed(id);
+      } else {
+        throw err;
+      }
     }
   }, [markReviewed]);
 
