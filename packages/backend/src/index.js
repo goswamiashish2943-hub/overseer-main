@@ -18,6 +18,7 @@ const analyseRoute = require('./analyseRoute');
 const wsServer     = require('./websocket');
 const { router: contextRoute } = require('./context');
 const { router: projectRoute } = require('./projectRoute');
+const reviewRoute  = require('./reviewRoute');
 
 const app  = express();
 const PORT = process.env.PORT || 4000;
@@ -64,9 +65,11 @@ app.get('/health', (req, res) => {
 
 // ── Routes ────────────────────────────────────────────────────────────────────
 app.use('/api/project', projectRoute);
+app.use('/api/sessions', reviewRoute);
 app.use('/', analyseRoute);
 app.use('/', contextRoute);
 console.log('[Overseer] Context routes mounted at /api/context');
+console.log('[Overseer] Review routes mounted at /api/sessions');
 
 // ── HTTP + WebSocket server ───────────────────────────────────────────────────
 const httpServer = http.createServer(app);

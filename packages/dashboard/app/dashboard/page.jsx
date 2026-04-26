@@ -2,12 +2,14 @@
 
 // packages/dashboard/app/dashboard/page.jsx
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import useStore from '../../lib/store';
 import { supabase } from '../../lib/supabase';
 import EnhancedAnalysis from '../../components/EnhancedAnalysis';
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 
 const SEVERITY = {
   critical: {
@@ -48,11 +50,51 @@ const SEVERITY = {
   },
 };
 
-function FeedCard({ item }) {
+// ─── Mark Reviewed API call ──────────────────────────────────────────────────
+
+async function callMarkReviewed(id) {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) throw new Error('Not authenticated');
+
+  const res = await fetch(`${API_URL}/api/sessions/${id}/mark-reviewed`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${session.access_token}`,
+      'Content-Type': 'application/json',
+    },
+  });
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.error || `HTTP ${res.status}`);
+  }
+
+  return res.json();
+}
+
+// ─── Feed Card ───────────────────────────────────────────────────────────────
+
+function FeedCard({ item, onMarkReviewed, isReviewed }) {
   const s = SEVERITY[item.severity] || SEVERITY.info;
+  const [marking, setMarking] = useState(false);
+
+  const handleMark = async (e) => {
+    e.stopPropagation();
+    setMarking(true);
+    try {
+      await onMarkReviewed(item.id);
+    } catch (err) {
+      console.error('Failed to mark reviewed:', err);
+      setMarking(false);
+    }
+  };
 
   return (
-    <div className={`rounded-lg border ${s.bg} ${s.border} p-4 mb-3`}>
+    <div
+      className={`rounded-lg border ${s.bg} ${s.border} p-4 mb-3 transition-all duration-300 ${
+        isReviewed ? 'opacity-0 scale-95 pointer-events-none' : 'opacity-100 scale-100'
+      }`}
+    >
       <div className="flex items-center gap-2 mb-2">
         <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${s.badge}`}>
           {s.label}
@@ -60,9 +102,22 @@ function FeedCard({ item }) {
         <span className="text-xs text-zinc-400 font-mono truncate max-w-xs">
           {item.filePath}
         </span>
-        <span className="text-xs text-zinc-600 ml-auto">
+        <span className="text-xs text-zinc-600 ml-auto mr-2">
           {new Date(item.timestamp).toLocaleTimeString()}
         </span>
+        {!isReviewed && (
+          <button
+            onClick={handleMark}
+            disabled={marking}
+            className="flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium
+              bg-zinc-800 hover:bg-green-900 border border-zinc-700 hover:border-green-600
+              text-zinc-400 hover:text-green-300 transition-all duration-200
+              disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
+            title="Mark as reviewed"
+          >
+            {marking ? '...' : '✓ Reviewed'}
+          </button>
+        )}
       </div>
       <p className="text-sm font-semibold text-white mb-1">{item.title}</p>
       <p className="text-sm text-zinc-300 leading-relaxed">{item.body}</p>
@@ -90,16 +145,62 @@ function StatBadge({ label, count, color }) {
   );
 }
 
+// ─── View Mode Toggle ────────────────────────────────────────────────────────
+
+function ViewToggle({ viewMode, setViewMode, liveCount, allCount }) {
+  return (
+    <div className="flex bg-zinc-900 rounded-lg border border-zinc-700 p-0.5">
+      <button
+        onClick={() => setViewMode('live')}
+        className={`px-3 py-1 rounded-md text-xs font-medium transition-all duration-200 ${
+          viewMode === 'live'
+            ? 'bg-blue-600 text-white shadow-sm'
+            : 'text-zinc-400 hover:text-white'
+        }`}
+      >
+        Live ({liveCount})
+      </button>
+      <button
+        onClick={() => setViewMode('all')}
+        className={`px-3 py-1 rounded-md text-xs font-medium transition-all duration-200 ${
+          viewMode === 'all'
+            ? 'bg-blue-600 text-white shadow-sm'
+            : 'text-zinc-400 hover:text-white'
+        }`}
+      >
+        All ({allCount})
+      </button>
+    </div>
+  );
+}
+
 
 export default function DashboardPage() {
   const {
     feedItems, sessionStats, wsConnected, sessionId,
     addFeedItem, setWsConnected, setSessionId,
+    reviewedIds, viewMode, markReviewed, setViewMode,
   } = useStore();
 
   const wsRef   = useRef(null);
   const feedRef = useRef(null);
   const router  = useRouter();
+
+  // Compute filtered items
+  const liveItems = feedItems.filter((item) => !reviewedIds.has(item.id));
+  const displayItems = viewMode === 'live' ? liveItems : feedItems;
+
+  // ── Handle mark reviewed ───────────────────────────────────────────────────
+
+  const handleMarkReviewed = useCallback(async (id) => {
+    try {
+      await callMarkReviewed(id);
+      markReviewed(id);
+    } catch (err) {
+      console.error('[Dashboard] Mark reviewed error:', err.message);
+      throw err; // re-throw so the button can show error state
+    }
+  }, [markReviewed]);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -190,6 +291,15 @@ export default function DashboardPage() {
           <Link href="/dashboard" className="text-sm font-medium text-white transition-colors">Live Analysis</Link>
           <Link href="/history" className="text-sm font-medium text-zinc-400 hover:text-white transition-colors">History</Link>
         </nav>
+
+        {/* View mode toggle */}
+        <ViewToggle
+          viewMode={viewMode}
+          setViewMode={setViewMode}
+          liveCount={liveItems.length}
+          allCount={feedItems.length}
+        />
+
         <div className="ml-auto flex items-center gap-2">
           <span className={`w-2 h-2 rounded-full ${wsConnected ? 'bg-green-500' : 'bg-red-500'}`} />
           <span className="text-xs text-zinc-400">{wsConnected ? 'Live' : 'Disconnected'}</span>
@@ -198,19 +308,46 @@ export default function DashboardPage() {
 
       <div className="flex flex-1 overflow-hidden">
         <main className="flex-1 overflow-y-auto p-6" ref={feedRef}>
-          {feedItems.length === 0 ? (
+          {displayItems.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-96 text-zinc-600">
               <div className="text-5xl mb-4">👁</div>
-              <p className="text-lg font-medium">Watching for file changes...</p>
-              <p className="text-sm mt-2">
-                Run <code className="bg-zinc-800 px-2 py-0.5 rounded text-zinc-300">overseer watch</code> in your project to start.
-              </p>
+              {feedItems.length > 0 && viewMode === 'live' ? (
+                <>
+                  <p className="text-lg font-medium">All caught up!</p>
+                  <p className="text-sm mt-2">
+                    All {feedItems.length} items have been reviewed.{' '}
+                    <button
+                      onClick={() => setViewMode('all')}
+                      className="text-blue-400 hover:text-blue-300 underline"
+                    >
+                      View all
+                    </button>
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="text-lg font-medium">Watching for file changes...</p>
+                  <p className="text-sm mt-2">
+                    Run <code className="bg-zinc-800 px-2 py-0.5 rounded text-zinc-300">overseer watch</code> in your project to start.
+                  </p>
+                </>
+              )}
             </div>
           ) : (
-          feedItems.map((item) =>
+          displayItems.map((item) =>
             item.enhanced
-              ? <EnhancedAnalysis key={item.id} item={item} />
-              : <FeedCard key={item.id} item={item} />
+              ? <EnhancedAnalysis
+                  key={item.id}
+                  item={item}
+                  onMarkReviewed={handleMarkReviewed}
+                  isReviewed={reviewedIds.has(item.id)}
+                />
+              : <FeedCard
+                  key={item.id}
+                  item={item}
+                  onMarkReviewed={handleMarkReviewed}
+                  isReviewed={reviewedIds.has(item.id)}
+                />
           )
           )}
         </main>
@@ -226,6 +363,24 @@ export default function DashboardPage() {
             </div>
           </div>
 
+          {/* Review progress */}
+          <div>
+            <h2 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3">Review Progress</h2>
+            <div className="bg-zinc-900 rounded-lg p-3 border border-zinc-800">
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-xs text-zinc-400">Reviewed</span>
+                <span className="text-xs font-mono text-zinc-300">
+                  {reviewedIds.size} / {feedItems.length}
+                </span>
+              </div>
+              <div className="w-full bg-zinc-800 rounded-full h-1.5">
+                <div
+                  className="h-1.5 rounded-full bg-green-500 transition-all duration-500"
+                  style={{ width: feedItems.length > 0 ? `${(reviewedIds.size / feedItems.length) * 100}%` : '0%' }}
+                />
+              </div>
+            </div>
+          </div>
 
           <div className="flex-1">
             <h2 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3">

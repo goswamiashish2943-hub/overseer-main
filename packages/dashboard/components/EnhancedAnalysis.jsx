@@ -251,12 +251,46 @@ function ContextSavedCard({ usedFallback }) {
 /**
  * @param {object} props
  * @param {object} props.item - Feed item with enhanced analysis fields
+ * @param {function} [props.onMarkReviewed] - Callback to mark item as reviewed
+ * @param {boolean} [props.isReviewed] - Whether this item has been reviewed
  */
-export default function EnhancedAnalysis({ item }) {
+export default function EnhancedAnalysis({ item, onMarkReviewed, isReviewed }) {
+  const [marking, setMarking] = useState(false);
+
   if (!item) return null;
 
+  const handleMark = async (e) => {
+    e.stopPropagation();
+    if (!onMarkReviewed) return;
+    setMarking(true);
+    try {
+      await onMarkReviewed(item.id);
+    } catch (err) {
+      console.error('Failed to mark reviewed:', err);
+      setMarking(false);
+    }
+  };
+
   return (
-    <div className="mb-3">
+    <div className={`mb-3 transition-all duration-300 ${
+      isReviewed ? 'opacity-0 scale-95 pointer-events-none' : 'opacity-100 scale-100'
+    }`}>
+      {/* Review header */}
+      {onMarkReviewed && !isReviewed && (
+        <div className="flex justify-end mb-1">
+          <button
+            onClick={handleMark}
+            disabled={marking}
+            className="flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium
+              bg-zinc-800 hover:bg-green-900 border border-zinc-700 hover:border-green-600
+              text-zinc-400 hover:text-green-300 transition-all duration-200
+              disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Mark as reviewed"
+          >
+            {marking ? '...' : '✓ Reviewed'}
+          </button>
+        </div>
+      )}
       <SuggestionCard     suggestion={item.suggestion}         filePath={item.filePath} />
       <BetterApproachCard betterApproach={item.betterApproach} />
       <ChangeBreakdownCard
@@ -269,3 +303,4 @@ export default function EnhancedAnalysis({ item }) {
     </div>
   );
 }
+

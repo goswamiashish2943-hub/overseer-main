@@ -24,6 +24,13 @@ const useStore = create((set) => ({
   // Current session ID
   sessionId: null,
 
+  // ── Review system ────────────────────────────────────────────────────────
+  // Set of feed item IDs that have been marked as reviewed
+  reviewedIds: new Set(),
+
+  // View mode: 'live' (unreviewed only) or 'all' (everything)
+  viewMode: 'live',
+
   // ── Actions ──────────────────────────────────────────────────────────────
 
   addFeedItem: (item) => set((state) => ({
@@ -42,6 +49,13 @@ const useStore = create((set) => ({
     },
   })),
 
+  markReviewed: (id) => set((state) => {
+    const next = new Set(state.reviewedIds);
+    next.add(id);
+    return { reviewedIds: next };
+  }),
+
+  setViewMode: (mode) => set({ viewMode: mode }),
 
   setWsConnected: (connected) => set({ wsConnected: connected }),
 
@@ -49,6 +63,7 @@ const useStore = create((set) => ({
 
   clearFeed: () => set({
     feedItems: [],
+    reviewedIds: new Set(),
     sessionStats: {
       criticalCount: 0,
       warningCount:  0,
