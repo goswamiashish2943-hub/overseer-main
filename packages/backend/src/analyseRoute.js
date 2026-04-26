@@ -113,23 +113,14 @@ router.post('/analyze', authMiddleware, async (req, res) => {
 
     if (result) {
       console.log(`[analyseRoute] 5/8 - Cache hit for ${file_path}`);
-      sendToSession(session_id, {
-          type: 'analysis_complete',
-          enhanced: true,
-          result: result,
-          filePath: file_path,
-          sessionId: session_id
-      });
     } else {
       console.log(`[analyseRoute] 5/8 - Cache miss. Queueing for batch analysis...`);
-      
       // Wait for batch queue to flush and process the LLM call
       result = await addToBatch(
           { filename: file_path, diff: diff_text },
           contextContent,
           session_id
       );
-      
       // Save to cache asynchronously 
       saveToCache(codeHash, result).catch(e => console.error("Cache save error:", e));
     }
@@ -147,7 +138,7 @@ router.post('/analyze', authMiddleware, async (req, res) => {
         explanations: result.explanations || null
     };
 
-    const { error: eventError } = await supabase
+    const { data: insertedEvent, error: eventError } = await supabase
       .from('code_sessions')
       .insert({
         session_id,
@@ -160,11 +151,22 @@ router.post('/analyze', authMiddleware, async (req, res) => {
         created_at: timestamp
           ? new Date(timestamp).toISOString()
           : new Date().toISOString(),
-      });
+      })
+      .select('id')
+      .single();
 
     if (eventError) {
       console.error('[analyseRoute] Event insert error:', eventError.message);
     }
+    
+    // Send to WebSocket AFTER getting the DB ID
+    sendToSession(session_id, {
+        type: 'analysis_complete',
+        enhanced: true,
+        result: { ...result, id: insertedEvent?.id },
+        filePath: file_path,
+        sessionId: session_id
+    });
 
     // 7. Upsert file_knowledge
     console.log(`[analyseRoute] 8/8 - Upserting file_knowledge...`);

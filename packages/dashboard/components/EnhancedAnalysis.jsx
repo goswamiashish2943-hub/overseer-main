@@ -278,17 +278,16 @@ export default function EnhancedAnalysis({ item, onMarkReviewed, isReviewed }) {
       {/* Review header */}
       {onMarkReviewed && !isReviewed && (
         <div className="flex justify-end mb-1">
-          <button
-            onClick={handleMark}
-            disabled={marking}
-            className="flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium
-              bg-zinc-800 hover:bg-green-900 border border-zinc-700 hover:border-green-600
-              text-zinc-400 hover:text-green-300 transition-all duration-200
-              disabled:opacity-50 disabled:cursor-not-allowed"
-            title="Mark as reviewed"
-          >
-            {marking ? '...' : '✓ Reviewed'}
-          </button>
+          <label className="flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium cursor-pointer text-zinc-400 hover:text-green-300 transition-all duration-200">
+            <input
+              type="checkbox"
+              className="w-3.5 h-3.5 cursor-pointer accent-green-600 rounded bg-zinc-800 border-zinc-700"
+              checked={isReviewed}
+              disabled={marking}
+              onChange={handleMark}
+            />
+            {marking ? '...' : 'Reviewed'}
+          </label>
         </div>
       )}
       <SuggestionCard     suggestion={item.suggestion}         filePath={item.filePath} />

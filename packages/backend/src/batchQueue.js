@@ -1,5 +1,4 @@
 const { upgradeBatchAnalysis } = require('./upgradeAnalysis');
-const { sendToSession } = require('./websocket');
 
 // State
 let pendingBatch = [];
@@ -81,12 +80,6 @@ async function processBatch() {
             const result = results[i];
 
             if (result) {
-                sendToSession(item.sessionId, {
-                    type: 'analysis_complete',
-                    enhanced: true,
-                    result: result,
-                    filePath: item.chunk.filename
-                });
                 item.resolve(result); // Pass it back to analyseRoute for DB hooks
             } else {
                 console.error(`[BatchQueue] empty result for ${item.chunk.filename}`);

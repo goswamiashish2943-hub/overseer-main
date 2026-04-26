@@ -125,12 +125,19 @@ function HistoryCard({ session }) {
             {formatDistanceToNow(new Date(session.created_at), { addSuffix: true })}
           </p>
         </div>
-        <span className={`px-2 py-1 rounded text-xs font-bold uppercase tracking-wider
-          ${alignmentScore >= 80 ? 'bg-green-950/50 text-green-400 border border-green-800' :
-            alignmentScore >= 50 ? 'bg-yellow-950/50 text-yellow-400 border border-yellow-800' :
-            'bg-red-950/50 text-red-400 border border-red-800'}`}>
-          {alignmentScore}% aligned
-        </span>
+        <div className="flex gap-2">
+          {session.reviewed && (
+            <span className="px-2 py-1 flex items-center rounded text-xs font-bold uppercase tracking-wider bg-zinc-900 border border-green-800/50 text-green-500">
+              ✓ Reviewed
+            </span>
+          )}
+          <span className={`px-2 py-1 rounded text-xs font-bold uppercase tracking-wider
+            ${alignmentScore >= 80 ? 'bg-green-950/50 text-green-400 border border-green-800' :
+              alignmentScore >= 50 ? 'bg-yellow-950/50 text-yellow-400 border border-yellow-800' :
+              'bg-red-950/50 text-red-400 border border-red-800'}`}>
+            {alignmentScore}% aligned
+          </span>
+        </div>
       </div>
 
       {expanded && (
