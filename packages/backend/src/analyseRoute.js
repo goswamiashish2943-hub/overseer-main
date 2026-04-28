@@ -128,8 +128,8 @@ router.post('/analyze', authMiddleware, async (req, res) => {
     const logTag = result.usedFallback ? '(fallback)' : '(enhanced)';
     console.log(`[analyseRoute] 6/8 - Analysis complete ${logTag} severity=${result.severity}`);
 
-    // 6. Save to code_sessions table
-    console.log(`[analyseRoute] 7/8 - Saving event to code_sessions...`);
+    // 6. Save to sessions table
+    console.log(`[analyseRoute] 7/8 - Saving event to sessions...`);
     const enhancedData = {
         suggestion: result.suggestion || null,
         better_approach: result.betterApproach || null,
@@ -139,7 +139,7 @@ router.post('/analyze', authMiddleware, async (req, res) => {
     };
 
     const { data: insertedEvent, error: eventError } = await supabase
-      .from('code_sessions')
+      .from('sessions')
       .insert({
         session_id,
         project_id,

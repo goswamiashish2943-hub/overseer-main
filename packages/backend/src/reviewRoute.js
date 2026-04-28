@@ -63,7 +63,7 @@ router.post('/:id/mark-reviewed', lightAuth, async (req, res) => {
     const reviewedAt = new Date().toISOString();
 
     const { data, error } = await supabase
-      .from('code_sessions')
+      .from('sessions')
       .update({ reviewed: true, reviewed_at: reviewedAt })
       .eq('id', id)
       .select('id, reviewed, reviewed_at')
