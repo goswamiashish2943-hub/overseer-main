@@ -19,7 +19,7 @@ export default function HistoryPage() {
     setLoading(true);
 
     let query = supabase
-      .from('sessions')
+      .from('code_sessions')
       .select('*')
       .order('created_at', { ascending: false });
 

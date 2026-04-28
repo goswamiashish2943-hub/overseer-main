@@ -23,11 +23,11 @@ CREATE TABLE IF NOT EXISTS project_context_files (
 CREATE INDEX IF NOT EXISTS idx_context_files_project_id
   ON project_context_files (project_id);
 
--- ── sessions ─────────────────────────────────────────────────────────────
+-- ── code_sessions ─────────────────────────────────────────────────────────────
 -- Stores full enhanced analysis sessions (one per file change).
 -- Provides long-term pattern tracking beyond the events table.
 
-CREATE TABLE IF NOT EXISTS sessions (
+CREATE TABLE IF NOT EXISTS code_sessions (
   id              uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
   project_id      uuid        NOT NULL,
   session_id      uuid        NOT NULL,
@@ -44,11 +44,11 @@ CREATE TABLE IF NOT EXISTS sessions (
   created_at      timestamptz NOT NULL DEFAULT now()
 );
 
-CREATE INDEX IF NOT EXISTS idx_sessions_project_id
-  ON sessions (project_id);
+CREATE INDEX IF NOT EXISTS idx_code_sessions_project_id
+  ON code_sessions (project_id);
 
-CREATE INDEX IF NOT EXISTS idx_sessions_file_path
-  ON sessions (project_id, file_path);
+CREATE INDEX IF NOT EXISTS idx_code_sessions_file_path
+  ON code_sessions (project_id, file_path);
 
 -- ── codebase_patterns ─────────────────────────────────────────────────────────
 -- Learned patterns over time (unused in v1, reserved for future use).
