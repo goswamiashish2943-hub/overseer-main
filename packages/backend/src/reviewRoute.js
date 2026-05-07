@@ -86,4 +86,51 @@ router.post('/:id/mark-reviewed', lightAuth, async (req, res) => {
   }
 });
 
+// ─── GET /history ─────────────────────────────────────────────────────────────
+
+router.get('/history', lightAuth, async (req, res) => {
+  try {
+    const supabase = getSupabase();
+    const { filter } = req.query;
+
+    const { data: projects, error: projError } = await supabase
+      .from('projects')
+      .select('project_id')
+      .eq('user_id', req.user.id);
+
+    if (projError) throw new Error(projError.message);
+    const projectIds = projects.map(p => p.project_id);
+
+    if (projectIds.length === 0) {
+      return res.json([]);
+    }
+
+    let query = supabase
+      .from('code_sessions')
+      .select('*')
+      .in('project_id', projectIds)
+      .order('created_at', { ascending: false });
+
+    const now = new Date();
+    if (filter === 'today') {
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      query = query.gte('created_at', today.toISOString());
+    } else if (filter === 'week') {
+      const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      query = query.gte('created_at', weekAgo.toISOString());
+    } else if (filter === 'month') {
+      const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      query = query.gte('created_at', monthAgo.toISOString());
+    }
+
+    const { data, error } = await query.limit(500);
+
+    if (error) throw new Error(error.message);
+    return res.json(data);
+  } catch (err) {
+    console.error('[reviewRoute] History error:', err.message);
+    return res.status(500).json({ error: 'Failed to fetch history' });
+  }
+});
+
 module.exports = router;

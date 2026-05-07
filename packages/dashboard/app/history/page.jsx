@@ -18,35 +18,34 @@ export default function HistoryPage() {
   const fetchSessions = async () => {
     setLoading(true);
 
-    let query = supabase
-      .from('code_sessions')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    const now = new Date();
-    if (filter === 'today') {
-      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      query = query.gte('created_at', today.toISOString());
-    } else if (filter === 'week') {
-      const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-      query = query.gte('created_at', weekAgo.toISOString());
-    } else if (filter === 'month') {
-      const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-      query = query.gte('created_at', monthAgo.toISOString());
-    }
-
-    const { data, error } = await query;
-
-    if (error) {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        setLoading(false);
+        return;
+      }
+      
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const res = await fetch(`${API_URL}/api/sessions/history?filter=${filter}`, {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`
+        }
+      });
+      
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || `HTTP ${res.status}`);
+      }
+      
+      const data = await res.json();
+      setSessions(data || []);
+      setErrorMsg(null);
+    } catch (error) {
       console.error('Error fetching sessions:', error);
       setErrorMsg(error.message);
+    } finally {
       setLoading(false);
-      return;
     }
-
-    setSessions(data || []);
-    setErrorMsg(null);
-    setLoading(false);
   };
 
   const filteredSessions = sessions.filter(session =>
