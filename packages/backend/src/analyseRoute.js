@@ -14,6 +14,8 @@ const { fetchProjectContext } = require('./context');
 const { computeCodeHash, checkCache, saveToCache } = require('./cacheService');
 const { addToBatch } = require('./batchQueue');
 const { sendToSession } = require('./websocket');
+const { analyzeDependencyImpact } = require('./core/dependency-analyzer');
+const { storeChange } = require('./core/memory-database');
 
 const router = express.Router();
 
@@ -128,6 +130,18 @@ router.post('/analyze', authMiddleware, async (req, res) => {
     const logTag = result.usedFallback ? '(fallback)' : '(enhanced)';
     console.log(`[analyseRoute] 6/8 - Analysis complete ${logTag} severity=${result.severity}`);
 
+    // 6.5 Calculate Dependency Impact & Store in Memory Database
+    const impact = analyzeDependencyImpact(file_path);
+    const memoryId = storeChange(
+      session_id,
+      project_id,
+      file_path,
+      diff_text,
+      impact.impactRadius || 0,
+      impact
+    );
+    console.log(`[analyseRoute] Memory DB stored change ${memoryId} with impact radius ${impact.impactRadius}`);
+
     // 6. Save to code_sessions table
     console.log(`[analyseRoute] 7/8 - Saving event to code_sessions...`);
     const enhancedData = {
@@ -163,7 +177,7 @@ router.post('/analyze', authMiddleware, async (req, res) => {
     sendToSession(session_id, {
         type: 'analysis_complete',
         enhanced: true,
-        result: { ...result, id: insertedEvent?.id },
+        result: { ...result, id: insertedEvent?.id, memoryId, impactRadius: impact.impactRadius },
         filePath: file_path,
         sessionId: session_id
     });

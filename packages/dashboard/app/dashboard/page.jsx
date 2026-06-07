@@ -296,7 +296,7 @@ export default function DashboardPage() {
         </div>
         <nav className="flex gap-4">
           <Link href="/dashboard" className="text-sm font-medium text-white transition-colors">Live Analysis</Link>
-          <Link href="/history" className="text-sm font-medium text-zinc-400 hover:text-white transition-colors">History</Link>
+          <Link href="/memory" className="text-sm font-medium text-purple-400 hover:text-purple-300 transition-colors">🧠 Memory</Link>
         </nav>
 
         {/* View mode toggle */}
