@@ -73,6 +73,7 @@ class CheckpointEngine {
 
         record.queue.push({
             file: chunk.relativePath,
+            projectRoot: this._projectRoot,
             diff: chunk.chunk.diffText,
             timestamp: chunk.timestamp,
             chunk_index: chunk.chunkIndex,
@@ -164,6 +165,7 @@ class CheckpointEngine {
             try {
                 await this._onDrain({
                     relativePath: item.file,
+                    projectRoot: item.projectRoot || this._projectRoot,
                     diff: item.diff,
                     timestamp: item.timestamp,
                     chunkIndex: item.chunk_index,

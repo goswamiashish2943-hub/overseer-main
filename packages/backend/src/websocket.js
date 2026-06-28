@@ -17,6 +17,10 @@ let _wss = null;
 function setup(httpServer) {
   _wss = new WebSocketServer({ server: httpServer });
 
+  _wss.on('error', (err) => {
+    console.error('[WebSocket] Server error:', err.message);
+  });
+
   _wss.on('connection', (ws, req) => {
     const url       = new URL(req.url, 'http://localhost');
     const sessionId = url.searchParams.get('session');
@@ -101,3 +105,4 @@ function connectedCount() {
 }
 
 module.exports = { setup, getClient, broadcast, sendToSession, connectedCount };
+

@@ -1,98 +1,112 @@
 // packages/backend/src/apiRoutes.js
+// Local memory and codebase analytics routes.
+
+'use strict';
+
 const express = require('express');
-const Database = require('better-sqlite3');
-const path = require('path');
-const { queryChanges, getChangeById, getSummary, searchChanges } = require('./core/memory-database');
-
-const dbPath = path.join(__dirname, '..', 'overseer-memory.db');
-
-// Helper: get all distinct project IDs from the memory DB
-function getAllProjects() {
-    try {
-        const db = new Database(dbPath, { readonly: true });
-        const rows = db.prepare('SELECT DISTINCT project_id, MAX(timestamp) as last_seen FROM file_changes GROUP BY project_id ORDER BY last_seen DESC').all();
-        db.close();
-        return rows;
-    } catch (e) {
-        return [];
-    }
-}
+const {
+  queryChanges,
+  getChangeById,
+  getSummary,
+  searchChanges,
+  getAllProjects,
+} = require('./core/local-store');
 
 const router = express.Router();
 
-// /api/memory/projects — list all project IDs tracked in memory DB
-router.get('/memory/projects', (req, res) => {
-    res.json(getAllProjects());
+router.get('/memory/projects', async (req, res) => {
+  try {
+    const projects = getAllProjects();
+    res.json(projects);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
-// /api/changes/history
-router.get('/changes/history', (req, res) => {
-    const { project_id } = req.query;
-    if (!project_id) return res.status(400).json({ error: 'project_id required' });
+router.get('/changes/history', async (req, res) => {
+  const { project_id } = req.query;
+  if (!project_id) return res.status(400).json({ error: 'project_id required' });
+  try {
     const history = queryChanges(project_id);
     res.json(history);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
-// /api/changes/:changeId/full
-router.get('/changes/:changeId/full', (req, res) => {
+router.get('/changes/:changeId/full', async (req, res) => {
+  try {
     const change = getChangeById(req.params.changeId);
     if (!change) return res.status(404).json({ error: 'Change not found' });
     res.json(change);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
-// /api/codebase/evolution
-router.get('/codebase/evolution', (req, res) => {
-    const { project_id } = req.query;
-    if (!project_id) return res.status(400).json({ error: 'project_id required' });
+router.get('/codebase/evolution', async (req, res) => {
+  const { project_id } = req.query;
+  if (!project_id) return res.status(400).json({ error: 'project_id required' });
+  try {
     const history = queryChanges(project_id, 100);
-    const evolution = history.map(h => ({
-        timestamp: h.timestamp,
-        filePath: h.file_path,
-        impactRadius: h.impact_radius
+    const evolution = history.map((h) => ({
+      timestamp: h.created_at,
+      filePath: h.file_path,
+      impactRadius: h.impact_radius || 0,
     }));
     res.json(evolution);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
-// /api/search/changes
-router.get('/search/changes', (req, res) => {
-    const { project_id, q } = req.query;
-    if (!project_id || !q) return res.status(400).json({ error: 'project_id and q required' });
+router.get('/search/changes', async (req, res) => {
+  const { project_id, q } = req.query;
+  if (!project_id || !q) return res.status(400).json({ error: 'project_id and q required' });
+  try {
     const results = searchChanges(project_id, q);
     res.json(results);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
-// /api/codebase/summary
-router.get('/codebase/summary', (req, res) => {
-    const { project_id } = req.query;
-    if (!project_id) return res.status(400).json({ error: 'project_id required' });
+router.get('/codebase/summary', async (req, res) => {
+  const { project_id } = req.query;
+  if (!project_id) return res.status(400).json({ error: 'project_id required' });
+  try {
     const summary = getSummary(project_id);
     res.json(summary);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
-// /api/graph/dependencies
-router.get('/graph/dependencies', (req, res) => {
-    const { project_id } = req.query;
-    if (!project_id) return res.status(400).json({ error: 'project_id required' });
-    
+router.get('/graph/dependencies', async (req, res) => {
+  const { project_id } = req.query;
+  if (!project_id) return res.status(400).json({ error: 'project_id required' });
+  try {
     const history = queryChanges(project_id, 50);
     const nodes = new Map();
     const edges = [];
-    
-    history.forEach(change => {
-        if (!nodes.has(change.file_path)) {
-            nodes.set(change.file_path, { id: change.file_path, label: change.file_path });
+
+    history.forEach((change) => {
+      if (!nodes.has(change.file_path)) {
+        nodes.set(change.file_path, { id: change.file_path, label: change.file_path });
+      }
+      const deps = change.impact_data?.dependencies || [];
+      deps.forEach((dep) => {
+        if (!nodes.has(dep)) {
+          nodes.set(dep, { id: dep, label: dep });
         }
-        if (change.impact_data && change.impact_data.dependencies) {
-            change.impact_data.dependencies.forEach(dep => {
-                if (!nodes.has(dep)) {
-                    nodes.set(dep, { id: dep, label: dep });
-                }
-                edges.push({ source: change.file_path, target: dep });
-            });
-        }
+        edges.push({ source: change.file_path, target: dep });
+      });
     });
-    
+
     res.json({ nodes: Array.from(nodes.values()), edges });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
 module.exports = router;

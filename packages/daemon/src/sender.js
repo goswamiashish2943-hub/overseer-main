@@ -49,6 +49,7 @@ class Sender {
     authToken,
     projectId,
     sessionId,
+    projectRoot = null,
     checkpointEngine,
     onTokenRefresh = null,
     supabaseClient = null,
@@ -64,6 +65,7 @@ class Sender {
     this._authToken        = authToken;
     this._projectId        = projectId;
     this._sessionId        = sessionId;
+    this._projectRoot      = projectRoot;
     this._checkpointEngine = checkpointEngine;
     this._onTokenRefresh   = onTokenRefresh;
     this._supabase         = supabaseClient;
@@ -128,6 +130,7 @@ class Sender {
     const payload = {
       project_id:   queuedChunk.projectId  || this._projectId,
       session_id:   queuedChunk.sessionId  || this._sessionId,
+      project_root: queuedChunk.projectRoot || this._projectRoot,
       file_path:    queuedChunk.relativePath,
       diff_text:    queuedChunk.diff,
       chunk_index:  queuedChunk.chunkIndex,
@@ -144,6 +147,7 @@ class Sender {
     return {
       project_id:   this._projectId,
       session_id:   this._sessionId,
+      project_root: changeEvent.projectRoot || this._projectRoot,
       file_path:    changeEvent.relativePath,
       diff_text:    diffChunk ? diffChunk.diffText : changeEvent.chunk.diffText,
       chunk_index:  changeEvent.chunkIndex,
@@ -248,3 +252,4 @@ class Sender {
 }
 
 module.exports = { Sender };
+

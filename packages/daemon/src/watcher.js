@@ -344,3 +344,4 @@ class OverseerWatcher extends EventEmitter {
 // ── Module exports ────────────────────────────────────────────────────────────
 
 module.exports = { OverseerWatcher, WATCHED_EXTENSIONS, IGNORED_PATTERNS }
+// Test comment to trigger change - local check 10:40

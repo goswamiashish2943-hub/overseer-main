@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 
-const API_URL = 'http://localhost:4000'; // Force local for testing
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 
 export default function MemoryPage() {
   const [activeTab, setActiveTab] = useState('summary');
@@ -190,7 +190,7 @@ export default function MemoryPage() {
                   <div key={item.id} className="bg-zinc-900 p-4 rounded-lg border border-zinc-800 flex justify-between items-start gap-4">
                     <div className="min-w-0">
                       <h3 className="font-mono text-sm text-blue-400 truncate">{item.file_path}</h3>
-                      <p className="text-xs text-zinc-500 mt-1">{new Date(item.timestamp + ' UTC').toLocaleString()}</p>
+                      <p className="text-xs text-zinc-500 mt-1">{new Date(item.timestamp || item.created_at || Date.now()).toLocaleString()}</p>
                     </div>
                     <div className="flex flex-col items-end gap-1 shrink-0">
                       <span className="text-xs bg-purple-900/50 text-purple-300 px-2 py-0.5 rounded border border-purple-800">
@@ -282,7 +282,7 @@ export default function MemoryPage() {
                         <h3 className="font-mono text-sm text-blue-400">{res.file_path}</h3>
                         <span className="text-xs bg-purple-900/50 text-purple-400 px-2 py-0.5 rounded">Impact: {res.impact_radius}</span>
                       </div>
-                      <p className="text-xs text-zinc-500">{new Date(res.timestamp + ' UTC').toLocaleString()}</p>
+                      <p className="text-xs text-zinc-500">{new Date(res.timestamp || res.created_at || Date.now()).toLocaleString()}</p>
                     </div>
                   )) : searchQuery ? (
                     <p className="text-zinc-500 text-sm">No matches found for "{searchQuery}".</p>
