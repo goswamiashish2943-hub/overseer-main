@@ -9,7 +9,7 @@
 
 const express = require('express');
 const crypto = require('crypto');
-const { resolveProject, localUser } = require('./core/local-store');
+const { resolveProject, localUser } = require('./core/supabase-store');
 
 const router = express.Router();
 
@@ -25,7 +25,7 @@ router.post('/resolve', async (req, res) => {
       ? identifier
       : crypto.createHash('sha256').update(identifier).digest('hex');
 
-    const result = resolveProject({
+    const result = await resolveProject({
       identifier: normalised,
       name,
       userId: localUser().id,
@@ -33,8 +33,11 @@ router.post('/resolve', async (req, res) => {
 
     return res.status(result.created ? 201 : 200).json(result);
   } catch (err) {
-    console.error('[projectRoute] Resolve error:', err.message);
-    return res.status(500).json({ error: 'Failed to resolve project' });
+    console.error('[projectRoute] Resolve error:', err);
+    return res.status(500).json({
+      error: 'Failed to resolve project',
+      detail: process.env.NODE_ENV === 'production' ? undefined : err.message,
+    });
   }
 });
 

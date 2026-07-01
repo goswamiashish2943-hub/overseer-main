@@ -2,10 +2,14 @@
 
 const crypto = require('crypto');
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 const Database = require('better-sqlite3');
 
-const DB_PATH = path.join(__dirname, '..', '..', 'overseer-memory.db');
+const APP_DIR = path.join(os.homedir(), '.overseer');
+const DB_PATH = process.env.OVERSEER_DB_PATH
+  ? path.resolve(process.env.OVERSEER_DB_PATH)
+  : path.join(APP_DIR, 'overseer-memory.db');
 const DEMO_USER = {
   id: '1e7e6fd6-2e25-4bcb-9f3c-2bca0d8a3f1d',
   email: 'demo@local.dev',

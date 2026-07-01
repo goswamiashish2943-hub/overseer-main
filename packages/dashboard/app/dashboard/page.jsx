@@ -9,7 +9,8 @@ import useStore from '../../lib/store';
 import { supabase } from '../../lib/supabase';
 import EnhancedAnalysis from '../../components/EnhancedAnalysis';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL || process.env.NEXT_PUBLIC_API_URL || 'https://overseer-main.onrender.com';
+const WS_URL = process.env.NEXT_PUBLIC_WS_URL || API_URL.replace(/^http/, 'ws');
 
 const SEVERITY = {
   critical: {
@@ -239,7 +240,7 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!sessionId) return;
     let isActive = true;
-    const wsUrl = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:4000';
+    const wsUrl = WS_URL;
     const ws    = new WebSocket(`${wsUrl}/?session=${sessionId}`);
     wsRef.current = ws;
 

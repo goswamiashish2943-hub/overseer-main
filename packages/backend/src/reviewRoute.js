@@ -4,7 +4,7 @@
 'use strict';
 
 const express = require('express');
-const { getHistoryForProject, markCodeSessionReviewed } = require('./core/local-store');
+const { getHistoryForProject, markCodeSessionReviewed } = require('./core/supabase-store');
 
 const router = express.Router();
 
@@ -16,7 +16,7 @@ router.post('/:id/mark-reviewed', async (req, res) => {
   }
 
   try {
-    const data = markCodeSessionReviewed(id);
+    const data = await markCodeSessionReviewed(id);
     if (!data) {
       return res.status(404).json({ error: 'Session not found' });
     }
@@ -35,15 +35,15 @@ router.get('/history', async (req, res) => {
     const projectId = req.query.project_id;
 
     if (projectId) {
-      return res.json(getHistoryForProject(projectId, filter || 'all'));
+      return res.json(await getHistoryForProject(projectId, filter || 'all'));
     }
 
     // Demo mode: when no project is provided, return the most recent project.
-    const { getAllProjects } = require('./core/local-store');
-    const projects = getAllProjects();
+    const { getAllProjects } = require('./core/supabase-store');
+    const projects = await getAllProjects();
     if (!projects.length) return res.json([]);
 
-    return res.json(getHistoryForProject(projects[0].project_id, filter || 'all'));
+    return res.json(await getHistoryForProject(projects[0].project_id, filter || 'all'));
   } catch (err) {
     console.error('[reviewRoute] History error:', err.message);
     return res.status(500).json({ error: 'Failed to fetch history' });

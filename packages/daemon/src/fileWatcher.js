@@ -57,6 +57,7 @@ async function saveContextToDB({ apiUrl, getToken, projectId, filePath, fileName
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type':  'application/json',
+          proxy: false,
         },
         timeout: 10000,
       }

@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL || process.env.NEXT_PUBLIC_API_URL || 'https://overseer-main.onrender.com';
 
 export default function MemoryPage() {
   const [activeTab, setActiveTab] = useState('summary');
@@ -122,7 +122,7 @@ export default function MemoryPage() {
 
       <div className="p-6 max-w-5xl mx-auto w-full">
         <h1 className="text-3xl font-bold mb-2 text-zinc-100 flex items-center gap-3">
-          🧠 Antigravity Codebase Memory
+          🧠 Codebase Memory
         </h1>
         {projectId && (
           <p className="text-xs text-zinc-500 mb-6 font-mono">Project: {projectId}</p>

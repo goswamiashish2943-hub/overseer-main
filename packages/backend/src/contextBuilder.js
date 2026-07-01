@@ -5,7 +5,7 @@
 
 'use strict';
 
-const { buildContext: buildLocalContext } = require('./core/local-store');
+const { buildContext: buildLocalContext } = require('./core/supabase-store');
 
 async function buildContext(projectId, filePath) {
   return buildLocalContext(projectId, filePath);

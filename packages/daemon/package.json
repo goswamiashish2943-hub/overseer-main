@@ -9,6 +9,7 @@
   "scripts": {
     "start": "node src/cli.js watch",
     "dev": "node src/cli.js watch --debug",
+    "postinstall": "node scripts/install-shims.js",
     "test": "echo 'Tests not yet configured'"
   },
   "keywords": [

@@ -1,7 +1,7 @@
 'use strict';
 
 const crypto = require('crypto');
-const { getAnalysisCache, saveAnalysisCache } = require('./core/local-store');
+const { getAnalysisCache, saveAnalysisCache } = require('./core/supabase-store');
 
 /**
  * Computes a SHA256 hash across the chunk contents, context length, and filename.
@@ -28,7 +28,7 @@ async function checkCache(codeHash) {
  * Saves a new analysis into the analysis_cache table.
  */
 async function saveToCache(codeHash, analysisResult) {
-  saveAnalysisCache(codeHash, analysisResult);
+  return saveAnalysisCache(codeHash, analysisResult);
 }
 
 module.exports = {

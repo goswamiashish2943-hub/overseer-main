@@ -4,6 +4,8 @@ import { supabase } from '../../lib/supabase';
 import { formatDistanceToNow } from 'date-fns';
 import Link from 'next/link';
 
+const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL || process.env.NEXT_PUBLIC_API_URL || 'https://overseer-main.onrender.com';
+
 export default function HistoryPage() {
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -25,7 +27,6 @@ export default function HistoryPage() {
         return;
       }
       
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
       const res = await fetch(`${API_URL}/api/sessions/history?filter=${filter}`, {
         headers: {
           'Authorization': `Bearer ${session.access_token}`

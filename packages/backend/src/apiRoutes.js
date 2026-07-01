@@ -10,13 +10,13 @@ const {
   getSummary,
   searchChanges,
   getAllProjects,
-} = require('./core/local-store');
+} = require('./core/supabase-store');
 
 const router = express.Router();
 
 router.get('/memory/projects', async (req, res) => {
   try {
-    const projects = getAllProjects();
+    const projects = await getAllProjects();
     res.json(projects);
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -27,7 +27,7 @@ router.get('/changes/history', async (req, res) => {
   const { project_id } = req.query;
   if (!project_id) return res.status(400).json({ error: 'project_id required' });
   try {
-    const history = queryChanges(project_id);
+    const history = await queryChanges(project_id);
     res.json(history);
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -36,7 +36,7 @@ router.get('/changes/history', async (req, res) => {
 
 router.get('/changes/:changeId/full', async (req, res) => {
   try {
-    const change = getChangeById(req.params.changeId);
+    const change = await getChangeById(req.params.changeId);
     if (!change) return res.status(404).json({ error: 'Change not found' });
     res.json(change);
   } catch (e) {
@@ -48,7 +48,7 @@ router.get('/codebase/evolution', async (req, res) => {
   const { project_id } = req.query;
   if (!project_id) return res.status(400).json({ error: 'project_id required' });
   try {
-    const history = queryChanges(project_id, 100);
+    const history = await queryChanges(project_id, 100);
     const evolution = history.map((h) => ({
       timestamp: h.created_at,
       filePath: h.file_path,
@@ -64,7 +64,7 @@ router.get('/search/changes', async (req, res) => {
   const { project_id, q } = req.query;
   if (!project_id || !q) return res.status(400).json({ error: 'project_id and q required' });
   try {
-    const results = searchChanges(project_id, q);
+    const results = await searchChanges(project_id, q);
     res.json(results);
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -75,7 +75,7 @@ router.get('/codebase/summary', async (req, res) => {
   const { project_id } = req.query;
   if (!project_id) return res.status(400).json({ error: 'project_id required' });
   try {
-    const summary = getSummary(project_id);
+    const summary = await getSummary(project_id);
     res.json(summary);
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -86,7 +86,7 @@ router.get('/graph/dependencies', async (req, res) => {
   const { project_id } = req.query;
   if (!project_id) return res.status(400).json({ error: 'project_id required' });
   try {
-    const history = queryChanges(project_id, 50);
+    const history = await queryChanges(project_id, 50);
     const nodes = new Map();
     const edges = [];
 

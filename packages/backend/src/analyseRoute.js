@@ -6,7 +6,7 @@
 const express = require('express');
 
 const { authMiddleware } = require('./authMiddleware');
-const { buildContext, fetchProjectContext, ensureSession, storeCodeSession, upsertFileKnowledge, storeChange } = require('./core/local-store');
+const { buildContext, fetchProjectContext, ensureSession, storeCodeSession, upsertFileKnowledge, storeChange } = require('./core/supabase-store');
 const { computeCodeHash, checkCache, saveToCache } = require('./cacheService');
 const { addToBatch } = require('./batchQueue');
 const { sendToSession } = require('./websocket');
@@ -35,12 +35,12 @@ router.post('/analyze', authMiddleware, async (req, res) => {
   res.status(202).json({ status: 'accepted', session_id, file_path });
 
   try {
-    ensureSession(session_id, project_id, req.user?.id);
+    await ensureSession(session_id, project_id, req.user?.id);
 
     const fileContext = await buildContext(project_id, file_path);
     console.log(`[analyseRoute] 2/8 - Per-file context built (len=${fileContext?.length || 0})`);
 
-    const projectContext = fetchProjectContext(project_id);
+    const projectContext = await fetchProjectContext(project_id);
     console.log(`[analyseRoute] 3/8 - Project context fetched (len=${projectContext?.length || 0})`);
 
     console.log('[analyseRoute] 4/8 - Checking cache...');
@@ -65,7 +65,7 @@ router.post('/analyze', authMiddleware, async (req, res) => {
     console.log(`[analyseRoute] 6/8 - Analysis complete ${logTag} severity=${result.severity}`);
 
     const impact = analyzeDependencyImpact(file_path, project_root);
-    const memoryId = storeChange(
+    const memoryId = await storeChange(
       session_id,
       project_id,
       file_path,
@@ -76,7 +76,7 @@ router.post('/analyze', authMiddleware, async (req, res) => {
     console.log(`[analyseRoute] Memory DB stored change ${memoryId} with impact radius ${impact.impactRadius}`);
 
     console.log('[analyseRoute] 7/8 - Saving event to code_sessions...');
-    const sessionDbId = storeCodeSession({
+    const sessionDbId = await storeCodeSession({
       session_id,
       project_id,
       file_path,
@@ -93,7 +93,7 @@ router.post('/analyze', authMiddleware, async (req, res) => {
     });
 
     console.log('[analyseRoute] 8/8 - Updating file knowledge...');
-    upsertFileKnowledge(
+    await upsertFileKnowledge(
       project_id,
       file_path,
       result.file_relevance,

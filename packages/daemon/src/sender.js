@@ -169,6 +169,7 @@ class Sender {
             'Authorization': `Bearer ${this._authToken}`,
             'Content-Type':  'application/json',
           },
+          proxy: false,
         });
 
         this._log(`POST /analyze OK — file=${payload.file_path} attempt=${attempt}`);
@@ -191,6 +192,7 @@ class Sender {
                   'Authorization': `Bearer ${this._authToken}`,
                   'Content-Type':  'application/json',
                 },
+                proxy: false,
               });
               this._log('POST /analyze OK after token refresh');
               return true;

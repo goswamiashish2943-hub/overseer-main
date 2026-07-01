@@ -10,7 +10,7 @@
 
 const express = require('express');
 const { authMiddleware } = require('./authMiddleware');
-const { upsertContextFile, listContextFiles, fetchProjectContext } = require('./core/local-store');
+const { upsertContextFile, listContextFiles, fetchProjectContext } = require('./core/supabase-store');
 
 const router = express.Router();
 
@@ -22,8 +22,8 @@ router.get('/api/context', authMiddleware, async (req, res) => {
   }
 
   try {
-    const files = listContextFiles(projectId);
-    const merged = fetchProjectContext(projectId);
+    const files = await listContextFiles(projectId);
+    const merged = await fetchProjectContext(projectId);
 
     return res.json({
       project_id: projectId,
@@ -46,7 +46,7 @@ router.post('/api/context', authMiddleware, async (req, res) => {
   }
 
   try {
-    upsertContextFile(project_id, file_name, content);
+    await upsertContextFile(project_id, file_name, content);
     console.log(`[context] Saved context file: ${file_name} (project=${project_id})`);
     return res.json({ status: 'saved', project_id, file_name });
   } catch (err) {

@@ -3,7 +3,7 @@
 
 'use strict';
 
-const { localUser } = require('./core/local-store');
+const { localUser } = require('./core/supabase-store');
 
 async function authMiddleware(req, res, next) {
   req.user = localUser();

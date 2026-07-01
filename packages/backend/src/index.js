@@ -22,7 +22,7 @@ const PORT = process.env.PORT || 4000;
 
 const allowedOrigins = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(',')
-  : ['http://localhost:3000'];
+  : ['https://overseer-main-dashboard.vercel.app'];
 
 app.use(cors({
   origin: (origin, callback) => {
@@ -76,15 +76,17 @@ httpServer.on('error', (err) => {
 });
 
 if (process.env.NODE_ENV === 'production') {
-  const BACKEND_URL = process.env.RAILWAY_PUBLIC_URL;
-  setInterval(async () => {
-    try {
-      await fetch(`${BACKEND_URL}/health`);
-      console.log('[Keep-alive] Pinged health endpoint');
-    } catch (e) {
-      console.error('[Keep-alive] Ping failed:', e.message);
-    }
-  }, 4 * 60 * 1000);
+  const BACKEND_URL = process.env.RENDER_EXTERNAL_URL || process.env.RENDER_INTERNAL_HOSTNAME;
+  if (BACKEND_URL) {
+    setInterval(async () => {
+      try {
+        await fetch(`${BACKEND_URL}/health`);
+        console.log('[Keep-alive] Pinged health endpoint');
+      } catch (e) {
+        console.error('[Keep-alive] Ping failed:', e.message);
+      }
+    }, 4 * 60 * 1000);
+  }
 }
 
 httpServer.listen(PORT, () => {

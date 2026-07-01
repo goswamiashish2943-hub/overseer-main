@@ -63,8 +63,8 @@ function openBrowser(url) {
   }
 }
 
-const DEFAULT_API_URL = process.env.OVERSEER_API_URL || 'http://localhost:4000';
-const DEFAULT_DASHBOARD_URL = process.env.DASHBOARD_URL || 'http://localhost:3000';
+const DEFAULT_API_URL = process.env.OVERSEER_API_URL || 'https://overseer-main.onrender.com';
+const DEFAULT_DASHBOARD_URL = process.env.DASHBOARD_URL || 'https://overseer-main-dashboard.vercel.app';
 const LOCAL_MODE = process.env.OVERSEER_STORAGE !== 'supabase';
 
 const AUTH_DIR = path.join(os.homedir(), '.overseer');
@@ -256,6 +256,7 @@ async function resolveProjectId(apiUrl, authToken, projectRoot, debug) {
         Authorization: `Bearer ${authToken}`,
         'Content-Type': 'application/json',
       },
+      proxy: false,
       timeout: 10000,
     }
   );
@@ -266,7 +267,7 @@ async function resolveProjectId(apiUrl, authToken, projectRoot, debug) {
   saveCachedProjectId(projectRoot, project_id);
 
   if (created) {
-    console.log(`  ? Project "${name}" created (${project_id.slice(0, 8)}…)
+    console.log(`  ? Project "${name}" created (${project_id.slice(0, 8)}ï¿½)
 `);
   } else if (debug) {
     console.log(`[CLI] Project resolved: ${project_id}`);
