@@ -2,18 +2,18 @@
 //
 // POST /api/project/resolve
 //
-// Local demo mode: resolves or creates a project row in SQLite using the
-// repo identifier the daemon sends.
+// Resolves or creates a project row using the authenticated Supabase user.
 
 'use strict';
 
 const express = require('express');
 const crypto = require('crypto');
-const { resolveProject, localUser } = require('./core/supabase-store');
+const { resolveProject } = require('./core/supabase-store');
+const { authMiddleware } = require('./authMiddleware');
 
 const router = express.Router();
 
-router.post('/resolve', async (req, res) => {
+router.post('/resolve', authMiddleware, async (req, res) => {
   const { identifier, name } = req.body || {};
 
   if (!identifier || typeof identifier !== 'string') {
@@ -28,7 +28,7 @@ router.post('/resolve', async (req, res) => {
     const result = await resolveProject({
       identifier: normalised,
       name,
-      userId: localUser().id,
+      userId: req.user?.id,
     });
 
     return res.status(result.created ? 201 : 200).json(result);

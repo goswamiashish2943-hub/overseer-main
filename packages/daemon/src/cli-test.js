@@ -8,7 +8,7 @@
 
 'use strict';
 
-require('dotenv').config();
+require('dotenv').config({ path: require('path').resolve(__dirname, '../.env') });
 
 const path      = require('path');
 const { v4: uuidv4 } = require('uuid');
