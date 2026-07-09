@@ -67,3 +67,36 @@
   background: #3f3f46;
   border-radius: 3px;
 }
+
+/* ── Decision Map Canvas Styles ─────────────────────────────── */
+.canvas-grid {
+  background-color: #121212;
+  background-image: radial-gradient(#2a2a2a 1.5px, transparent 1.5px);
+  background-size: 40px 40px;
+}
+
+.tree-line {
+  fill: none;
+  stroke: #2a2a2a;
+  stroke-width: 1.5px;
+  transition: stroke 0.2s ease, stroke-width 0.2s ease, filter 0.2s ease;
+}
+
+.tree-line--hovered {
+  stroke: #c8c6c5;
+  stroke-width: 2px;
+  filter: drop-shadow(0 0 4px rgba(200, 198, 197, 0.3));
+}
+
+.tree-line--active {
+  stroke: #c8c6c5;
+  stroke-width: 1.5px;
+  stroke-dasharray: 4px;
+  animation: dash-flow 20s linear infinite;
+}
+
+@keyframes dash-flow {
+  to {
+    stroke-dashoffset: -400px;
+  }
+}

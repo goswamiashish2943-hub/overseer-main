@@ -91,8 +91,9 @@ export default function MemoryPage() {
           <span className="text-lg font-bold tracking-tight text-blue-500">Overseer</span>
         </div>
         <nav className="flex gap-4">
-          <Link href="/dashboard" className="text-sm font-medium text-zinc-400 hover:text-white transition-colors">Live Analysis</Link>
-          <Link href="/memory" className="text-sm font-medium text-purple-400 hover:text-purple-300 transition-colors">🧠 Memory</Link>
+          <Link href="/dashboard"    className="text-sm font-medium text-zinc-400 hover:text-white transition-colors">Live Analysis</Link>
+          <Link href="/decision-map" className="text-sm font-medium text-zinc-400 hover:text-white transition-colors">🗺 Decision Map</Link>
+          <Link href="/memory"       className="text-sm font-medium text-purple-400 hover:text-purple-300 transition-colors">🧠 Memory</Link>
         </nav>
 
         {/* Project selector */}

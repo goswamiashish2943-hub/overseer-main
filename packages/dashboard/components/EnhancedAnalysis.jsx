@@ -35,7 +35,7 @@ function SectionCard({ title, icon, colorClass, borderClass, bgClass, children, 
         <span className="text-base">{icon}</span>
         <span className={`text-xs font-bold uppercase tracking-wider ${colorClass}`}>{title}</span>
         {collapsible && (
-          <span className="ml-auto text-zinc-500 text-xs">{open ? '▲' : '▼'}</span>
+          <span className="ml-auto text-on-surface-variant text-xs">{open ? '▲' : '▼'}</span>
         )}
       </div>
       {open && children}
@@ -151,22 +151,22 @@ function ChangeBreakdownCard({ changeAnalysis, explanations }) {
       {hasChanges && (
         <div className="space-y-2">
           {changeAnalysis.map((change, i) => (
-            <div key={i} className="p-2 rounded bg-zinc-900 border border-zinc-700">
+            <div key={i} className="p-2 rounded-md bg-surface-l2 border border-outline-variant/40">
               <div className="flex items-center gap-2 mb-1">
-                <span className={`text-xs font-mono px-1.5 rounded ${
-                  change.type === 'add'    ? 'bg-green-900 text-green-300' :
-                  change.type === 'remove' ? 'bg-red-900 text-red-300' :
-                  'bg-blue-900 text-blue-300'
+                <span className={`text-xs font-mono px-1.5 py-0.5 rounded ${
+                  change.type === 'add'    ? 'bg-stable/20   text-stable'   :
+                  change.type === 'remove' ? 'bg-critical/20 text-critical' :
+                  'bg-blue-900/60 text-blue-300'
                 }`}>
                   {change.type}
                 </span>
                 {change.lines && (
-                  <span className="text-xs text-zinc-500 font-mono">L{change.lines}</span>
+                  <span className="text-xs text-on-surface-variant font-mono">L{change.lines}</span>
                 )}
               </div>
-              <p className="text-xs text-zinc-300 leading-relaxed">{change.description}</p>
+              <p className="text-xs text-on-surface leading-relaxed">{change.description}</p>
               {change.impact && (
-                <p className="text-xs text-zinc-500 mt-1 italic">{change.impact}</p>
+                <p className="text-xs text-on-surface-variant mt-1 italic">{change.impact}</p>
               )}
             </div>
           ))}
@@ -260,11 +260,11 @@ function ContextSavedCard({ usedFallback }) {
     <SectionCard
       title={usedFallback ? 'Analysis Mode: Basic' : 'Analysis Mode: Enhanced'}
       icon={usedFallback ? '⚡' : '🧠'}
-      colorClass={usedFallback ? 'text-zinc-400' : 'text-zinc-400'}
-      borderClass="border-zinc-700"
-      bgClass="bg-zinc-900"
+      colorClass="text-on-surface-variant"
+      borderClass="border-outline-variant/40"
+      bgClass="bg-surface-l1"
     >
-      <p className="text-xs text-zinc-500">
+      <p className="text-xs text-on-surface-variant">
         {usedFallback
           ? 'Used basic analysis (context analysis unavailable). Check Groq API key and rate limits.'
           : 'Context-aware analysis complete — project .md files were included in analysis.'}
