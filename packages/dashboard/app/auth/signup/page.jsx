@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../../../lib/supabase';
+import { Eye, EyeOff, UserPlus } from 'lucide-react';
 
 export default function SignupPage() {
   const router = useRouter();
@@ -11,6 +12,7 @@ export default function SignupPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleSignup = async (e) => {
     e.preventDefault();
@@ -35,57 +37,75 @@ export default function SignupPage() {
       return;
     }
 
-    setSuccess('Check your email to verify your account');
-    setTimeout(() => router.push('/auth/login'), 2000);
+    setSuccess('Verification email sent. Check your inbox.');
+    setTimeout(() => router.push('/auth/login'), 3000);
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-zinc-950 text-zinc-100">
-      <div className="bg-zinc-900 border border-zinc-800 p-8 rounded-xl shadow-xl w-full max-w-md">
-        <h1 className="text-3xl font-bold text-center mb-8 text-blue-500">Create Account</h1>
+    <div className="min-h-screen flex items-center justify-center bg-surface-l0 canvas-grid text-on-surface px-4">
+      <div className="bg-surface-l1/80 backdrop-blur-md border border-outline-variant/40 p-8 rounded-xl shadow-2xl w-full max-w-md relative z-10">
+        <div className="flex flex-col items-center mb-8">
+          <div className="w-12 h-12 rounded-lg bg-purple-500/10 border border-purple-500/30 flex items-center justify-center mb-3">
+            <UserPlus className="w-6 h-6 text-purple-400" />
+          </div>
+          <h1 className="text-2xl font-bold tracking-tight text-on-surface">Create an account</h1>
+          <p className="text-xs text-on-surface-variant/60 mt-1">Monitor codebase changes in real-time</p>
+        </div>
         
         <form onSubmit={handleSignup} className="space-y-4">
           {error && (
-            <div className="bg-red-950/50 border border-red-800 text-red-400 px-4 py-3 rounded-lg text-sm">
+            <div className="bg-critical/10 border border-critical/30 text-critical px-4 py-2.5 rounded-lg text-xs leading-normal">
               {error}
             </div>
           )}
 
           {success && (
-            <div className="bg-green-950/50 border border-green-800 text-green-400 px-4 py-3 rounded-lg text-sm">
+            <div className="bg-stable/10 border border-stable/30 text-stable px-4 py-2.5 rounded-lg text-xs leading-normal">
               {success}
             </div>
           )}
           
           <div>
-            <label className="block text-sm font-medium mb-2 text-zinc-300">Email</label>
+            <label className="block text-xs font-semibold uppercase tracking-wider mb-2 text-on-surface-variant">Email Address</label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-4 py-2 border border-zinc-700 bg-zinc-800 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+              className="w-full px-4 py-2 bg-surface-l2 border border-outline-variant/45 rounded-lg text-on-surface text-sm placeholder:text-on-surface-variant/30 focus:outline-none focus:border-accent-primary focus:ring-1 focus:ring-accent-primary/20 transition-all font-mono"
+              placeholder="name@domain.com"
               required
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-2 text-zinc-300">Password</label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-2 border border-zinc-700 bg-zinc-800 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-              required
-            />
+            <label className="block text-xs font-semibold uppercase tracking-wider mb-2 text-on-surface-variant">Password</label>
+            <div className="relative">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full pl-4 pr-10 py-2 bg-surface-l2 border border-outline-variant/45 rounded-lg text-on-surface text-sm placeholder:text-on-surface-variant/30 focus:outline-none focus:border-accent-primary focus:ring-1 focus:ring-accent-primary/20 transition-all font-mono"
+                placeholder="••••••••"
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant/40 hover:text-on-surface transition-colors"
+              >
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-2 text-zinc-300">Confirm Password</label>
+            <label className="block text-xs font-semibold uppercase tracking-wider mb-2 text-on-surface-variant">Confirm Password</label>
             <input
               type="password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              className="w-full px-4 py-2 border border-zinc-700 bg-zinc-800 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+              className="w-full px-4 py-2 bg-surface-l2 border border-outline-variant/45 rounded-lg text-on-surface text-sm placeholder:text-on-surface-variant/30 focus:outline-none focus:border-accent-primary focus:ring-1 focus:ring-accent-primary/20 transition-all font-mono"
+              placeholder="••••••••"
               required
             />
           </div>
@@ -93,15 +113,15 @@ export default function SignupPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-blue-600 text-white py-2 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
+            className="w-full bg-accent-primary text-surface-l0 py-2 rounded-lg font-semibold hover:bg-white disabled:opacity-50 transition-all shadow-[0_0_12px_rgba(200,198,197,0.1)] hover:shadow-[0_0_16px_rgba(200,198,197,0.25)] text-sm mt-2"
           >
-            {loading ? 'Creating account...' : 'Sign up'}
+            {loading ? 'Registering...' : 'Get Started'}
           </button>
         </form>
 
-        <p className="text-center mt-6 text-sm text-zinc-400">
+        <p className="text-center mt-6 text-xs text-on-surface-variant">
           Already have an account?{' '}
-          <a href="/auth/login" className="text-blue-500 hover:text-blue-400 hover:underline font-medium transition-colors">
+          <a href="/auth/login" className="text-accent-primary hover:underline font-semibold transition-colors">
             Sign in
           </a>
         </p>

@@ -36,3 +36,19 @@ module.exports = {
   checkCache,
   saveToCache,
 };
+ */
+function getCacheStatistics() {
+  return {
+    hits: cacheHits,
+    misses: cacheMisses,
+    size: memoryCache.size,
+    ratio: cacheHits + cacheMisses === 0 ? 0 : (cacheHits / (cacheHits + cacheMisses)) * 100
+  };
+}
+
+module.exports = {
+  computeCodeHash,
+  checkCache,
+  saveToCache,
+  getCacheStatistics,
+};

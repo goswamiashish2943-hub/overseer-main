@@ -22,7 +22,7 @@ function setup(httpServer) {
   });
 
   _wss.on('connection', (ws, req) => {
-    const url       = new URL(req.url, 'http://localhost');
+    const url = new URL(req.url, 'http://localhost');
     const sessionId = url.searchParams.get('session');
 
     if (!sessionId) {

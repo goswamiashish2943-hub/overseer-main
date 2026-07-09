@@ -12,3 +12,8 @@ async function buildContext(projectId, filePath) {
 }
 
 module.exports = { buildContext };
+return '';
+  }
+}
+
+module.exports = { buildContext };
