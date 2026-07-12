@@ -1,6 +1,6 @@
 # Overseer
 
-Real-time AI code analysis for developers.
+Real-time coding agent  oversight for developers.
 
 Watch your project. Get instant architectural feedback, security checks, and pattern validation.
 
@@ -33,7 +33,7 @@ npx overseer watch .
 ✅ **Architecture validation** — Ensures code matches your project's design decisions
 ✅ **Zero setup** — Works with any project, auto-detects git remote
 ✅ **Smart context** — Reads your project docs (ARCHITECTURE.md, SECURITY.md, etc.)
-
+✅ **decision tree graph - tell you exactly what decision were taken and what it effects 
 ## How it works
 
 1. You write code
